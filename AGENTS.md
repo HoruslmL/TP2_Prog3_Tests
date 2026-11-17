@@ -15,6 +15,7 @@
   - `Balls/Factory/`: `BallFactory`, `BallPool` y `BallSpawner`.
   - `GameFlow/`: eventos, estados, `GameStateMachine` y `GameFlowController`.
   - `Inventory/`: `Inventory`.
+  - `Levels/`: modelo de configuracion de niveles del TP3 (`LevelDataAsset`, `BallSpawnPointData` y `BallSpawnOption`).
   - `TestingInGame/` y `BallTestLauncher.cs`: utilidades de prueba dentro del juego.
   - `TP2.Gameplay.asmdef`: assembly de Runtime; actualmente no declara referencias adicionales.
 - `Assets/_Project/Tests/EditMode/`: tests EditMode; assembly `EditModeFolder`, restringido a la plataforma Editor. Cubre datos, interacciones, inventario y flujo/eventos.
