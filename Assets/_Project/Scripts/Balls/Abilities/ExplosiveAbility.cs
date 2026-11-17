@@ -1,5 +1,3 @@
-using UnityEngine;
-
 public class ExplosiveAbility : IBallAbility
 {
     public BallAbilityType AbilityType =>
@@ -8,6 +6,9 @@ public class ExplosiveAbility : IBallAbility
     public bool TryActivate(BallRuntime owner, ImpactContext impact)
     {
         if (owner == null || impact == null)
+            return false;
+
+        if (owner.Data.AbilityType != AbilityType)
             return false;
 
         if (impact.Source != owner && impact.Target != owner)

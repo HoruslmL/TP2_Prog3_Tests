@@ -235,9 +235,7 @@ public class BallSceneTest : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            Rigidbody2D rb = normalBall.GetComponent<Rigidbody2D>();
-
-            rb.AddForce(
+            normalBall.Launch(
                 Vector2.right * launchImpulse,
                 ForceMode2D.Impulse
             );

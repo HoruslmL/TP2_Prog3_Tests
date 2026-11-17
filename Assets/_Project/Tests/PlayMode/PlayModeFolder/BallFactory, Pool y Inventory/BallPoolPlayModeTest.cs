@@ -44,7 +44,7 @@ public class BallPoolPlayModeTest
             1f,
             BallAbilityType.Explosive,
             0.1f,
-            1f,
+            0.1f,
             1.5f
         );
 
@@ -188,9 +188,11 @@ public class BallPoolPlayModeTest
 
         // Simulamos que el efecto está listo para ejecutarse.
         Assert.IsTrue(explosiveBall.Runtime.TryScheduleEffect());
-        Assert.IsTrue(explosiveBall.Runtime.TryMarkEffectExecuted());
-
-        executor.Execute(explosiveBall.Runtime);
+        Assert.IsTrue(
+            explosiveBall.GetComponent<BallEffectActivation>().Activate(
+                new EffectActivationRequest(explosiveBall.Runtime)
+            )
+        );
 
         // Esperamos a que el pool termine de limpiarla.
         while (pool.AvailableCount == 0)

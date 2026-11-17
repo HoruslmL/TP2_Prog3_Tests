@@ -4,12 +4,20 @@ public sealed class InteractionResolver
 {
     private readonly Dictionary<BallAbilityType, IBallAbility> abilities;
 
+    public static InteractionResolver CreateDefault()
+    {
+        return new InteractionResolver(new ExplosiveAbility());
+    }
+
     public InteractionResolver(params IBallAbility[] availableAbilities)
     {
         abilities = new Dictionary<BallAbilityType, IBallAbility>();
 
-        foreach (var ability in availableAbilities)
+        foreach (IBallAbility ability in availableAbilities)
         {
+            if (ability == null)
+                continue;
+
             abilities.Add(ability.AbilityType, ability);
         }
     }

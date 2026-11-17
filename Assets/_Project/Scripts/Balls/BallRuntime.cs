@@ -1,5 +1,3 @@
-using UnityEngine;
-
 public enum BallRuntimeState
 {
     Available,
@@ -34,9 +32,6 @@ public sealed class BallRuntime
     public bool TryScheduleEffect()
     {
         if (State != BallRuntimeState.Active)
-            return false;
-
-        if (Data.AbilityType != BallAbilityType.Explosive)
             return false;
 
         State = BallRuntimeState.PendingEffect;
@@ -82,8 +77,7 @@ public sealed class BallRuntime
 
     public bool TryReturnToPool()
     {
-        if (State != BallRuntimeState.BeingCollected &&
-            State != BallRuntimeState.EffectExecuted)
+        if (State != BallRuntimeState.BeingCollected)
             return false;
 
         State = BallRuntimeState.Available;

@@ -13,15 +13,16 @@ public class BallTestLauncher : MonoBehaviour
             return;
         }
 
+        BallController controller = GetComponent<BallController>();
+        if (controller == null)
+        {
+            Debug.LogError("BallTestLauncher: falta BallController.");
+            return;
+        }
+
         Vector2 direction =
             (target.position - GetComponent<Rigidbody2D>().position).normalized;
 
-        GetComponent<Rigidbody2D>().linearVelocity = direction * launchSpeed;
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
+        controller.LaunchWithVelocity(direction * launchSpeed);
     }
 }

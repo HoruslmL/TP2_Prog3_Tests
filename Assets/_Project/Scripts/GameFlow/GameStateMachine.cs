@@ -1,5 +1,3 @@
-using UnityEngine;
-
 public class GameStateMachine
 {
     public GameState CurrentState { get; private set; }

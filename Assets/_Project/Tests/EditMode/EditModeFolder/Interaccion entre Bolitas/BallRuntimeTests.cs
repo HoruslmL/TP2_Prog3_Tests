@@ -15,22 +15,27 @@ public class BallRuntimeTests
         Assert.That(ball.TryActivate(), Is.True);
         Assert.That(ball.TryScheduleEffect(), Is.True);
         Assert.That(ball.TryMarkEffectExecuted(), Is.True);
+        Assert.That(ball.TryStartCollection(), Is.True);
         Assert.That(ball.TryReturnToPool(), Is.True);
 
         Assert.That(ball.State, Is.EqualTo(BallRuntimeState.Available));
     }
 
     [Test]
-    public void NormalBall_CannotScheduleExplosion()
+    public void Runtime_AllowsOnlyValidLifecycleTransitions()
     {
         var data = new BallData(
             "Normal", 1f, BallAbilityType.None);
 
         var ball = new BallRuntime("instance-1", data);
 
-        ball.TryActivate();
-
         Assert.That(ball.TryScheduleEffect(), Is.False);
+        Assert.That(ball.TryMarkEffectExecuted(), Is.False);
+        Assert.That(ball.TryReturnToPool(), Is.False);
+
+        Assert.That(ball.TryActivate(), Is.True);
+        Assert.That(ball.TryMarkEffectExecuted(), Is.False);
+        Assert.That(ball.TryReturnToPool(), Is.False);
         Assert.That(ball.State, Is.EqualTo(BallRuntimeState.Active));
     }
 }

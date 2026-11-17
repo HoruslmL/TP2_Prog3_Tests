@@ -8,7 +8,7 @@ public class ExplosiveEffectExecutor : MonoBehaviour, IEffectExecutor
 
     public void Execute(BallRuntime owner)
     {
-        if (owner == null)
+        if (owner == null || owner.State != BallRuntimeState.EffectExecuted)
             return;
 
         Vector2 explosionPosition = transform.position;
@@ -81,16 +81,5 @@ public class ExplosiveEffectExecutor : MonoBehaviour, IEffectExecutor
             this
         );
 
-        // Destruimos la bolita después de ejecutar la explosión.
-        BallController ownerController = GetComponent<BallController>();
-
-        if (ownerController != null)
-        {
-            ownerController.Despawn();
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
     }
 }

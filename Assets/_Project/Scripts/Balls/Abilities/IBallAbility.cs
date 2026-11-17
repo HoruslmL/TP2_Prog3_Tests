@@ -1,5 +1,3 @@
-using UnityEngine;
-
 public interface IBallAbility
 {
     BallAbilityType AbilityType { get; }

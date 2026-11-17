@@ -1,5 +1,3 @@
-using UnityEngine;
-
 public sealed class BallData
 {
     public string Id { get; }

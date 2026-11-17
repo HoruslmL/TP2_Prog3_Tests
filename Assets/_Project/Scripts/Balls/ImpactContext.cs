@@ -1,5 +1,3 @@
-using UnityEngine;
-
 public sealed class ImpactContext
 {
     public BallRuntime Source { get; }

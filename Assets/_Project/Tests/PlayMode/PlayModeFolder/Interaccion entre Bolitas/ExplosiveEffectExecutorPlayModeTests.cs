@@ -13,7 +13,7 @@ public class ExplosiveEffectExecutorPlayModeTests
             1f,
             BallAbilityType.Explosive,
             3f,
-            1f
+            0.1f
         );
 
         BallData normalData = new BallData(
@@ -69,16 +69,26 @@ public class ExplosiveEffectExecutorPlayModeTests
             "La bolita debería programar su explosión."
         );
 
-        Assert.IsTrue(
-            explosiveBall.Runtime.TryMarkEffectExecuted(),
-            "La bolita debería marcar su efecto como ejecutado."
-        );
-
-        explosiveBall.GetComponent<ExplosiveEffectExecutor>()
-            .Execute(explosiveBall.Runtime);
-
         bool ownerDidNotReceiveImpulse =
             explosiveRb.linearVelocity.magnitude < 0.01f;
+
+        Assert.IsTrue(
+            explosiveBall.GetComponent<BallEffectActivation>().Activate(
+                new EffectActivationRequest(explosiveBall.Runtime)
+            ),
+            "La activación debería programar la ejecución del efecto."
+        );
+
+        yield return null;
+
+        Assert.AreEqual(
+            BallRuntimeState.PendingEffect,
+            explosiveBall.Runtime.State,
+            "El efecto debe respetar el delay configurado."
+        );
+
+        while (explosiveBall != null)
+            yield return new WaitForFixedUpdate();
 
         yield return new WaitForFixedUpdate();
 
@@ -169,6 +179,7 @@ public class ExplosiveEffectExecutorPlayModeTests
             BallRuntimeState.PendingEffect;
 
         Object.Destroy(secondBall.gameObject);
+        Object.Destroy(firstBall.gameObject);
 
         yield return null;
 

@@ -1,5 +1,5 @@
 using System;
-using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D))]
@@ -7,12 +7,13 @@ using UnityEngine;
 public class BallController : MonoBehaviour
 {
     public BallRuntime Runtime { get; private set; }
+    public bool IsMoving => rb != null &&
+        rb.linearVelocity.sqrMagnitude > MovementThreshold * MovementThreshold;
 
     private Rigidbody2D rb;
     private InteractionResolver resolver;
-    private IEffectExecutor effectExecutor;
+    private BallEffectActivation effectActivation;
     private BallPool ownerPool;
-    private Coroutine activationCoroutine;
 
     private bool wasMoving;
     private const float MovementThreshold = 0.05f;
@@ -27,24 +28,30 @@ public class BallController : MonoBehaviour
         if (Runtime == null)
             return;
 
-        bool isMoving =
-            rb.linearVelocity.sqrMagnitude >
-            MovementThreshold * MovementThreshold;
+        bool isMoving = IsMoving;
 
         if (isMoving && !wasMoving)
-        {
-            if (GameFlowControllerExistsInResolving())
-                GameEvents.RaiseNewMovementStarted();
-        }
+            GameEvents.RaiseNewMovementStarted();
 
         wasMoving = isMoving;
     }
 
     public void Initialize(BallData data)
     {
+        Initialize(data, InteractionResolver.CreateDefault());
+    }
+
+    public void Initialize(BallData data, InteractionResolver interactionResolver)
+    {
         if (data == null)
         {
             Debug.LogError("BallController: BallData es null.");
+            return;
+        }
+
+        if (interactionResolver == null)
+        {
+            Debug.LogError("BallController: InteractionResolver es null.");
             return;
         }
 
@@ -57,6 +64,7 @@ public class BallController : MonoBehaviour
             return;
         }
 
+        resolver = interactionResolver;
         ConfigureNewRuntime(data);
     }
 
@@ -67,53 +75,21 @@ public class BallController : MonoBehaviour
             data
         );
 
-        resolver = new InteractionResolver(
-            new ExplosiveAbility()
-        );
-
         rb.mass = data.Mass;
         transform.localScale = Vector3.one * data.Scale;
 
-        FindEffectExecutor();
-    }
+        if (effectActivation == null)
+            effectActivation = GetComponent<BallEffectActivation>();
+        if (effectActivation == null)
+            effectActivation = gameObject.AddComponent<BallEffectActivation>();
 
-    private void FindEffectExecutor()
-    {
-        effectExecutor = null;
-
-        if (Runtime.Data.AbilityType != BallAbilityType.Explosive)
-            return;
-
-        ExplosiveEffectExecutor executor =
-            GetComponent<ExplosiveEffectExecutor>();
-
-        if (executor == null)
-        {
-            executor = gameObject.AddComponent<ExplosiveEffectExecutor>();
-        }
-
-        effectExecutor = executor;
-    }
-
-    private void RemoveEffectExecutor()
-    {
-        effectExecutor = null;
-
-        MonoBehaviour[] components = GetComponents<MonoBehaviour>();
-
-        foreach (MonoBehaviour component in components)
-        {
-            if (component is IEffectExecutor)
-                Destroy(component);
-        }
+        effectActivation.Configure(Runtime);
     }
 
     public void PrepareForPool()
     {
-        CancelActivationCoroutine();
-
-        effectExecutor = null;
-        resolver = null;
+        if (effectActivation != null)
+            effectActivation.ResetForPool();
 
         rb.linearVelocity = Vector2.zero;
         rb.angularVelocity = 0f;
@@ -121,28 +97,11 @@ public class BallController : MonoBehaviour
 
         transform.localScale = Vector3.one;
         wasMoving = false;
-
-        // Eliminamos todos los ejecutores temporales.
-        MonoBehaviour[] components = GetComponents<MonoBehaviour>();
-
-        foreach (MonoBehaviour component in components)
-        {
-            if (component is IEffectExecutor)
-                Destroy(component);
-        }
     }
 
     public bool IsNeutral()
     {
-        MonoBehaviour[] components = GetComponents<MonoBehaviour>();
-
-        foreach (MonoBehaviour component in components)
-        {
-            if (component is IEffectExecutor)
-                return false;
-        }
-
-        return true;
+        return effectActivation == null || effectActivation.IsNeutral;
     }
 
     public bool ResetForReuse(BallData data, Vector2 position)
@@ -165,10 +124,11 @@ public class BallController : MonoBehaviour
             return false;
         }
 
-        CancelActivationCoroutine();
-
-        // Limpiamos los componentes de la vida anterior.
-        RemoveEffectExecutor();
+        if (!IsNeutral())
+        {
+            Debug.LogError("BallController: la bolita aún no está limpia para reutilizarse.");
+            return false;
+        }
 
         // Reiniciamos la física.
         rb.linearVelocity = Vector2.zero;
@@ -208,6 +168,9 @@ public class BallController : MonoBehaviour
         if (otherBall == null || otherBall.Runtime == null)
             return;
 
+        if (GetInstanceID() > otherBall.GetInstanceID())
+            return;
+
         ContactPoint2D contact = collision.GetContact(0);
 
         Vector2 direction =
@@ -226,19 +189,15 @@ public class BallController : MonoBehaviour
             collision.relativeVelocity.magnitude
         );
 
-        ReceiveImpact(impact);
+        List<EffectActivationRequest> requests = resolver.ResolveImpact(impact);
 
-        ImpactContext reverseImpact = new ImpactContext(
-            otherBall.Runtime,
-            Runtime,
-            contact.point.x,
-            contact.point.y,
-            -direction.x,
-            -direction.y,
-            collision.relativeVelocity.magnitude
-        );
-
-        otherBall.ReceiveImpact(reverseImpact);
+        foreach (EffectActivationRequest request in requests)
+        {
+            if (request.Owner == Runtime)
+                ProcessActivationRequest(request);
+            else if (request.Owner == otherBall.Runtime)
+                otherBall.ProcessActivationRequest(request);
+        }
     }
 
     public void ReceiveImpact(ImpactContext impact)
@@ -255,86 +214,67 @@ public class BallController : MonoBehaviour
         }
     }
 
+    public bool Launch(Vector2 force, ForceMode2D forceMode)
+    {
+        if (Runtime == null || Runtime.State != BallRuntimeState.Active ||
+            force.sqrMagnitude <= 0f)
+            return false;
+
+        rb.AddForce(force, forceMode);
+        GameEvents.RaiseBallLaunched();
+        return true;
+    }
+
+    public bool LaunchWithVelocity(Vector2 velocity)
+    {
+        if (Runtime == null || Runtime.State != BallRuntimeState.Active ||
+            velocity.sqrMagnitude <= 0f)
+            return false;
+
+        rb.linearVelocity = velocity;
+        GameEvents.RaiseBallLaunched();
+        return true;
+    }
+
     private void ProcessActivationRequest(
         EffectActivationRequest request)
     {
         if (request == null || request.Owner != Runtime)
             return;
 
-        if (effectExecutor == null)
+        if (effectActivation == null || !effectActivation.Activate(request))
         {
             Debug.LogError(
-                "BallController: no hay IEffectExecutor en " + gameObject.name,
+                "BallController: no se pudo activar el efecto de " + gameObject.name,
                 this
             );
-            return;
         }
-
-        activationCoroutine = StartCoroutine(
-            WaitForActivation(request)
-        );
-    }
-
-    private IEnumerator WaitForActivation(
-        EffectActivationRequest request)
-    {
-        yield return new WaitForSeconds(request.Delay);
-
-        activationCoroutine = null;
-
-        if (request.Owner.State != BallRuntimeState.PendingEffect)
-            yield break;
-
-        if (!request.Owner.TryMarkEffectExecuted())
-            yield break;
-
-        effectExecutor.Execute(request.Owner);
     }
 
     public void Despawn()
     {
-        CancelActivationCoroutine();
-
-        if (ownerPool != null)
+        if (ownerPool == null)
         {
-            if (Runtime.State == BallRuntimeState.PendingEffect)
-            {
-                if (resolver == null ||
-                    !resolver.CanCancelPendingEffect(Runtime))
-                    return;
-
-                if (!Runtime.TryCancelPendingEffect())
-                    return;
-            }
-            else if (Runtime.State != BallRuntimeState.BeingCollected)
-            {
-                if (!Runtime.TryStartCollection())
-                    return;
-            }
-
-            ownerPool.ReturnBall(this);
-        }
-        else
-        {
+            if (effectActivation != null)
+                effectActivation.Cancel();
             Destroy(gameObject);
+            return;
         }
-    }
 
-    private void CancelActivationCoroutine()
-    {
-        if (activationCoroutine != null)
+        if (Runtime.State == BallRuntimeState.PendingEffect)
         {
-            StopCoroutine(activationCoroutine);
-            activationCoroutine = null;
+            if (!resolver.CanCancelPendingEffect(Runtime) ||
+                !Runtime.TryCancelPendingEffect())
+                return;
         }
-    }
+        else if (Runtime.State != BallRuntimeState.BeingCollected &&
+                 !Runtime.TryStartCollection())
+        {
+            return;
+        }
 
-    private bool GameFlowControllerExistsInResolving()
-    {
-        GameFlowController controller =
-            FindFirstObjectByType<GameFlowController>();
-
-        return controller != null &&
-               controller.CurrentState == GameState.Resolving;
+        if (effectActivation != null)
+            effectActivation.Cancel();
+        ownerPool.ReturnBall(this);
     }
 }

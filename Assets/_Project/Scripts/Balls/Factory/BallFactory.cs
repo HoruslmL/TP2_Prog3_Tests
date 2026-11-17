@@ -2,6 +2,9 @@ using UnityEngine;
 
 public class BallFactory : MonoBehaviour
 {
+    private readonly InteractionResolver interactionResolver =
+        InteractionResolver.CreateDefault();
+
     public BallController Create(
         BallController prefab,
         BallData data,
@@ -31,7 +34,7 @@ public class BallFactory : MonoBehaviour
             Quaternion.identity
         );
 
-        newBall.Initialize(data);
+        newBall.Initialize(data, interactionResolver);
 
         if (newBall.Runtime == null || !newBall.Runtime.TryActivate())
         {

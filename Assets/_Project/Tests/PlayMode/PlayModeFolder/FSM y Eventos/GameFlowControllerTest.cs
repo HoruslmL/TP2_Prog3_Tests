@@ -8,11 +8,17 @@ public class GameFlowControllerTest
     private GameObject gameObject;
     private GameFlowController controller;
 
+    private bool ballLaunchedEventReceived;
+    private bool allBallsStoppedEventReceived;
+    private bool effectsResolvedEventReceived;
     private bool movementEventReceived;
 
     [SetUp]
     public void SetUp()
     {
+        ballLaunchedEventReceived = false;
+        allBallsStoppedEventReceived = false;
+        effectsResolvedEventReceived = false;
         gameObject = new GameObject("GameFlowController");
         controller = gameObject.AddComponent<GameFlowController>();
     }
@@ -20,6 +26,10 @@ public class GameFlowControllerTest
     [TearDown]
     public void TearDown()
     {
+        GameEvents.BallLaunched -= OnBallLaunchedObserved;
+        GameEvents.AllBallsStopped -= OnAllBallsStoppedObserved;
+        GameEvents.EffectsResolved -= OnEffectsResolvedObserved;
+        GameEvents.NewMovementStarted -= OnMovementStarted;
         Object.Destroy(gameObject);
     }
 
@@ -46,6 +56,43 @@ public class GameFlowControllerTest
         Assert.IsFalse(changed);
         Assert.AreEqual(GameState.Initializing, controller.CurrentState);
     }
+
+    [UnityTest]
+    public IEnumerator ActualLaunch_UpdatesGameFlowAndPublishesResolutionEvents()
+    {
+        yield return null;
+
+        GameObject ballObject = new GameObject("LaunchedBall");
+        Rigidbody2D rb = ballObject.AddComponent<Rigidbody2D>();
+        rb.gravityScale = 0f;
+        rb.linearDamping = 100f;
+        ballObject.AddComponent<CircleCollider2D>();
+
+        BallController ball = ballObject.AddComponent<BallController>();
+        ball.Initialize(new BallData("Normal", 1f, BallAbilityType.None));
+        Assert.IsTrue(ball.Runtime.TryActivate());
+
+        GameEvents.BallLaunched += OnBallLaunchedObserved;
+        GameEvents.AllBallsStopped += OnAllBallsStoppedObserved;
+        GameEvents.EffectsResolved += OnEffectsResolvedObserved;
+
+        Assert.IsTrue(ball.LaunchWithVelocity(Vector2.right));
+        Assert.IsTrue(ballLaunchedEventReceived);
+        Assert.AreEqual(GameState.Resolving, controller.CurrentState);
+
+        for (int i = 0; i < 180 &&
+             (!allBallsStoppedEventReceived || !effectsResolvedEventReceived); i++)
+        {
+            yield return new WaitForFixedUpdate();
+        }
+
+        Assert.IsTrue(allBallsStoppedEventReceived);
+        Assert.IsTrue(effectsResolvedEventReceived);
+
+        Object.Destroy(ballObject);
+        yield return null;
+    }
+
     [Test]
     public void BallLaunchedEvent_ChangesStateToResolving()
     {
@@ -303,5 +350,20 @@ public class GameFlowControllerTest
     private void OnMovementStarted()
     {
         movementEventReceived = true;
+    }
+
+    private void OnBallLaunchedObserved()
+    {
+        ballLaunchedEventReceived = true;
+    }
+
+    private void OnAllBallsStoppedObserved()
+    {
+        allBallsStoppedEventReceived = true;
+    }
+
+    private void OnEffectsResolvedObserved()
+    {
+        effectsResolvedEventReceived = true;
     }
 }
