@@ -1,0 +1,62 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 195a0c7b3dff47ddac8cb38399194546, type: 3}
+  m_Name: Level-1
+  m_EditorClassIdentifier: TP2.Gameplay::LevelDataAsset
+  seed: 0
+  spawnPoints:
+  - id: spawn-point-001
+    localPosition: {x: -5.379696, y: -2.3652663}
+    spawnOptions: []
+  - id: spawn-point-002
+    localPosition: {x: -2.5210233, y: -2.4840145}
+    spawnOptions: []
+  - id: spawn-point-003
+    localPosition: {x: 0.547843, y: -2.4118059}
+    spawnOptions: []
+  - id: spawn-point-004
+    localPosition: {x: 3.472292, y: -2.4118059}
+    spawnOptions: []
+  - id: spawn-point-005
+    localPosition: {x: 1.9920154, y: -0.58853847}
+    spawnOptions: []
+  - id: spawn-point-006
+    localPosition: {x: -1.0226945, y: -0.55243415}
+    spawnOptions: []
+  - id: spawn-point-007
+    localPosition: {x: -4.0193524, y: -0.534382}
+    spawnOptions: []
+  - id: spawn-point-008
+    localPosition: {x: -2.484919, y: 1.0361553}
+    spawnOptions: []
+  - id: spawn-point-009
+    localPosition: {x: 0.49368656, y: 1.0181032}
+    spawnOptions: []
+  - id: spawn-point-010
+    localPosition: {x: 3.5083961, y: 1.0000511}
+    spawnOptions: []
+  - id: spawn-point-011
+    localPosition: {x: -1.0046424, y: 2.010972}
+    spawnOptions: []
+  - id: spawn-point-012
+    localPosition: {x: 1.9739633, y: 2.010972}
+    spawnOptions: []
+  - id: spawn-point-013
+    localPosition: {x: 0.52084816, y: 3.0337121}
+    spawnOptions: []
+  - id: spawn-point-014
+    localPosition: {x: 5.0105886, y: -0.5128145}
+    spawnOptions: []
+  - id: spawn-point-015
+    localPosition: {x: 7.4252453, y: -2.3615355}
+    spawnOptions: []
+  enableDynamicBalance: 0

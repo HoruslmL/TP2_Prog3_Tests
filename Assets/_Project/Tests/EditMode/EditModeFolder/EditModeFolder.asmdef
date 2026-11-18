@@ -4,7 +4,8 @@
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "TP2.Gameplay"
+        "TP2.Gameplay",
+        "TP2.Gameplay.Editor"
     ],
     "includePlatforms": [
         "Editor"

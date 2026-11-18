@@ -2,4 +2,5 @@
   <Project Path="EditModeFolder.csproj" />
   <Project Path="PlayModeFolder.csproj" />
   <Project Path="TP2.Gameplay.csproj" />
+  <Project Path="TP2.Gameplay.Editor.csproj" />
 </Solution>
