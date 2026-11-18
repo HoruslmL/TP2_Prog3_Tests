@@ -15,10 +15,10 @@
   - `Balls/Factory/`: `BallFactory`, `BallPool` y `BallSpawner`.
   - `GameFlow/`: eventos, estados, `GameStateMachine` y `GameFlowController`.
   - `Inventory/`: `Inventory`.
-  - `Levels/`: modelo de configuracion de niveles del TP3 (`LevelDataAsset`, `BallSpawnPointData`, `BallSpawnOption`) y `LevelDataValidator`.
+  - `Levels/`: modelo de configuracion de niveles del TP3 (`LevelDataAsset`, `BallSpawnPointData`, `BallSpawnOption`), `LevelDataValidator` y `BallDistributionGenerator`.
   - `TestingInGame/` y `BallTestLauncher.cs`: utilidades de prueba dentro del juego.
   - `TP2.Gameplay.asmdef`: assembly de Runtime; actualmente no declara referencias adicionales.
-- `Assets/_Project/Tests/EditMode/`: tests EditMode; assembly `EditModeFolder`, restringido a la plataforma Editor. Cubre datos, validacion de niveles, interacciones, inventario y flujo/eventos.
+- `Assets/_Project/Tests/EditMode/`: tests EditMode; assembly `EditModeFolder`, restringido a la plataforma Editor. Cubre datos, validacion y generacion de distribuciones de niveles, interacciones, inventario y flujo/eventos.
 - `Assets/_Project/Tests/PlayMode/`: tests PlayMode; assembly `PlayModeFolder`. Cubre control de bolitas, factory/pool/spawner, efectos y flujo.
 - `Assets/_Project/Scenes/`: escena de colisiones de prueba. `Assets/Scenes/` contiene la escena principal.
 - `Assets/_Project/Scripts/Balls/Prefabs/` y `Balls/ScriptableData/`: prefabs y assets de datos de bolitas.
