@@ -135,6 +135,7 @@ public class BallController : MonoBehaviour
         rb.angularVelocity = 0f;
         rb.mass = 1f;
 
+        transform.rotation = Quaternion.identity;
         transform.position = position;
         transform.localScale = Vector3.one;
 

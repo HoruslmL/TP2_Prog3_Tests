@@ -64,6 +64,7 @@ public class BallPoolPlayModeTest
 
         Assert.IsNotNull(ball);
         Assert.IsTrue(ball.gameObject.activeSelf);
+        Assert.AreEqual(Quaternion.identity, ball.transform.rotation);
 
         Assert.AreEqual(
             BallRuntimeState.Active,
@@ -95,6 +96,7 @@ public class BallPoolPlayModeTest
         rb.angularVelocity = 10f;
         rb.mass = 99f;
 
+        firstBall.transform.rotation = Quaternion.Euler(0f, 0f, 45f);
         firstBall.transform.localScale = Vector3.one * 3f;
 
         // La devolvemos al pool.
@@ -136,6 +138,7 @@ public class BallPoolPlayModeTest
         Assert.AreEqual(2f, rb.mass);
         Assert.AreEqual(Vector2.zero, rb.linearVelocity);
         Assert.AreEqual(0f, rb.angularVelocity);
+        Assert.AreEqual(Quaternion.identity, reusedBall.transform.rotation);
         Assert.AreEqual(Vector3.one * 2f, reusedBall.transform.localScale);
 
         Assert.AreEqual(1, pool.CreatedCount);

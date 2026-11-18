@@ -21,6 +21,10 @@ public class BallDataAsset : ScriptableObject
     [SerializeField, Min(0.1f)]
     private float scale = 1f;
 
+    [SerializeField] private GameObject ballPrefab;
+
+    public GameObject BallPrefab => ballPrefab;
+
     public BallData ToBallData()
     {
         return new BallData(
