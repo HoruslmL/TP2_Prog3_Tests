@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 195a0c7b3dff47ddac8cb38399194546, type: 3}
+  m_Name: Level-1Prueba
+  m_EditorClassIdentifier: TP2.Gameplay::LevelDataAsset
+  seed: 0
+  spawnPoints:
+  - id: spawn-point-001
+    localPosition: {x: -1.4954858, y: 1.4709647}
+    spawnOptions:
+    - ballData: {fileID: 11400000, guid: 793adbb5394adeb4aacbf40c211fb697, type: 2}
+      spawnProbability: 30
+    - ballData: {fileID: 11400000, guid: 06b101ce83ec5cd4cb20b49a612fb2f0, type: 2}
+      spawnProbability: 70
+  - id: spawn-point-002
+    localPosition: {x: 1.5125339, y: 1.4919996}
+    spawnOptions:
+    - ballData: {fileID: 11400000, guid: 06b101ce83ec5cd4cb20b49a612fb2f0, type: 2}
+      spawnProbability: 35
+    - ballData: {fileID: 11400000, guid: 793adbb5394adeb4aacbf40c211fb697, type: 2}
+      spawnProbability: 65
+  - id: spawn-point-003
+    localPosition: {x: 1.4914988, y: -0.506333}
+    spawnOptions:
+    - ballData: {fileID: 11400000, guid: 793adbb5394adeb4aacbf40c211fb697, type: 2}
+      spawnProbability: 50
+    - ballData: {fileID: 11400000, guid: 06b101ce83ec5cd4cb20b49a612fb2f0, type: 2}
+      spawnProbability: 50
+  - id: spawn-point-004
+    localPosition: {x: -1.5375528, y: -0.4642629}
+    spawnOptions:
+    - ballData: {fileID: 11400000, guid: 06b101ce83ec5cd4cb20b49a612fb2f0, type: 2}
+      spawnProbability: 80
+    - ballData: {fileID: 11400000, guid: 06b101ce83ec5cd4cb20b49a612fb2f0, type: 2}
+      spawnProbability: 20
+  enableDynamicBalance: 1
