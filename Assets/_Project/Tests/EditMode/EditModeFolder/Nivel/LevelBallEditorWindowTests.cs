@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -210,6 +211,193 @@ public class LevelBallEditorWindowTests
     }
 
     [Test]
+    public void SetSpawnPointLocalPosition_PreservesDataAndGroupsDragUpdatesForUndoRedo()
+    {
+        BallDataAsset ballData =
+            CreateBallDataAsset("move-test", 0.5f, 1f, Vector2.zero);
+        SetSpawnPoints(
+            new SpawnPointSpec(
+                "movable",
+                new Vector2(1f, 2f),
+                new[] { new SpawnOptionSpec(ballData, 100f) }));
+
+        Undo.IncrementCurrentGroup();
+        int undoGroup = Undo.GetCurrentGroup();
+        Undo.SetCurrentGroupName("Mover punto de aparición");
+        Assert.That(
+            LevelBallEditorAssetOperations.TrySetSpawnPointLocalPosition(
+                levelDataAsset,
+                "movable",
+                new Vector2(3f, 4f)),
+            Is.True);
+        Assert.That(
+            LevelBallEditorAssetOperations.TrySetSpawnPointLocalPosition(
+                levelDataAsset,
+                "movable",
+                new Vector2(5f, 6f)),
+            Is.True);
+        Undo.CollapseUndoOperations(undoGroup);
+
+        BallSpawnPointData movedPoint = levelDataAsset.SpawnPoints[0];
+        Assert.That(movedPoint.LocalPosition, Is.EqualTo(new Vector2(5f, 6f)));
+        Assert.That(movedPoint.Id, Is.EqualTo("movable"));
+        Assert.That(movedPoint.SpawnOptions, Has.Count.EqualTo(1));
+        Assert.That(movedPoint.SpawnOptions[0].BallData, Is.EqualTo(ballData));
+        Assert.That(movedPoint.SpawnOptions[0].SpawnProbability, Is.EqualTo(100f));
+
+        Undo.PerformUndo();
+        BallSpawnPointData undonePoint = levelDataAsset.SpawnPoints[0];
+        Assert.That(undonePoint.LocalPosition, Is.EqualTo(new Vector2(1f, 2f)));
+        Assert.That(undonePoint.Id, Is.EqualTo("movable"));
+        Assert.That(undonePoint.SpawnOptions[0].BallData, Is.EqualTo(ballData));
+        Assert.That(undonePoint.SpawnOptions[0].SpawnProbability, Is.EqualTo(100f));
+
+        Undo.PerformRedo();
+        BallSpawnPointData redonePoint = levelDataAsset.SpawnPoints[0];
+        Assert.That(redonePoint.LocalPosition, Is.EqualTo(new Vector2(5f, 6f)));
+        Assert.That(redonePoint.Id, Is.EqualTo("movable"));
+        Assert.That(redonePoint.SpawnOptions[0].BallData, Is.EqualTo(ballData));
+        Assert.That(redonePoint.SpawnOptions[0].SpawnProbability, Is.EqualTo(100f));
+    }
+
+    [Test]
+    public void SetSpawnPointLocalPosition_RejectsDuplicateOrMissingIds()
+    {
+        SetSpawnPoints(
+            new SpawnPointSpec("duplicate", Vector2.one, new SpawnOptionSpec[0]),
+            new SpawnPointSpec("duplicate", Vector2.right, new SpawnOptionSpec[0]));
+
+        Assert.That(
+            LevelBallEditorAssetOperations.TrySetSpawnPointLocalPosition(
+                levelDataAsset,
+                "duplicate",
+                new Vector2(4f, 5f)),
+            Is.False);
+        Assert.That(levelDataAsset.SpawnPoints[0].LocalPosition, Is.EqualTo(Vector2.one));
+        Assert.That(levelDataAsset.SpawnPoints[1].LocalPosition, Is.EqualTo(Vector2.right));
+        Assert.That(
+            LevelBallEditorAssetOperations.TrySetSpawnPointLocalPosition(
+                levelDataAsset,
+                "missing",
+                Vector2.zero),
+            Is.False);
+    }
+
+    [Test]
+    public void GeometryCache_RebuildsAfterSpawnPointsAreAddedAndRemoved()
+    {
+        SetSpawnPoints(
+            new SpawnPointSpec(
+                "first",
+                Vector2.zero,
+                new SpawnOptionSpec[0]));
+        LevelBallEditorWindow window = CreateEditorWindow();
+
+        RefreshSpawnPointGeometry(window, levelDataAsset);
+        Assert.That(GetSpawnPointGeometryCount(window), Is.EqualTo(1));
+
+        LevelBallEditorAssetOperations.AddSpawnPoint(
+            levelDataAsset,
+            Vector2.one);
+        RefreshSpawnPointGeometry(window, levelDataAsset);
+        Assert.That(GetSpawnPointGeometryCount(window), Is.EqualTo(2));
+
+        var serializedAsset = new SerializedObject(levelDataAsset);
+        SerializedProperty spawnPoints =
+            serializedAsset.FindProperty("spawnPoints");
+        spawnPoints.DeleteArrayElementAtIndex(0);
+        Assert.That(serializedAsset.ApplyModifiedPropertiesWithoutUndo(), Is.True);
+
+        RefreshSpawnPointGeometry(window, levelDataAsset);
+        Assert.That(GetSpawnPointGeometryCount(window), Is.EqualTo(1));
+    }
+
+    [Test]
+    public void GeometryCache_RebuildsWhenPointCountChangesWithoutAnUndoCallback()
+    {
+        SetSpawnPoints(
+            new SpawnPointSpec(
+                "first",
+                Vector2.zero,
+                new SpawnOptionSpec[0]));
+        LevelBallEditorWindow window = CreateEditorWindow();
+        RefreshSpawnPointGeometry(window, levelDataAsset);
+        Assert.That(GetSpawnPointGeometryCount(window), Is.EqualTo(1));
+
+        SetSpawnPoints(
+            new SpawnPointSpec("first", Vector2.zero, new SpawnOptionSpec[0]),
+            new SpawnPointSpec("second", Vector2.one, new SpawnOptionSpec[0]));
+        Assert.That(GetWindowField<bool>(
+            window,
+            "spawnPointGeometryDirty"), Is.False);
+
+        RefreshSpawnPointGeometry(window, levelDataAsset);
+        Assert.That(GetSpawnPointGeometryCount(window), Is.EqualTo(2));
+
+        SetSpawnPoints(
+            new SpawnPointSpec(
+                "first",
+                Vector2.zero,
+                new SpawnOptionSpec[0]));
+        Assert.That(GetWindowField<bool>(
+            window,
+            "spawnPointGeometryDirty"), Is.False);
+
+        RefreshSpawnPointGeometry(window, levelDataAsset);
+        Assert.That(GetSpawnPointGeometryCount(window), Is.EqualTo(1));
+    }
+
+    [Test]
+    public void PlayModeTransition_ClearsSelectionAndDragAndRebuildsGeometryCache()
+    {
+        SetSpawnPoints(
+            new SpawnPointSpec(
+                "selected",
+                Vector2.zero,
+                new SpawnOptionSpec[0]));
+        LevelBallEditorWindow window = CreateEditorWindow();
+        RefreshSpawnPointGeometry(window, levelDataAsset);
+
+        SetWindowField(window, "selectedSpawnPointId", "selected");
+        SetWindowField(window, "isDraggingSpawnPoint", true);
+        SetWindowField(window, "dragUndoGroup", -1);
+        SetWindowField(window, "isPlacingPoint", true);
+        SetWindowField(window, "placementControlId", -1);
+
+        InvokeWindowMethod(
+            window,
+            "OnPlayModeStateChanged",
+            PlayModeStateChange.ExitingPlayMode);
+
+        Assert.That(GetWindowField<string>(
+            window,
+            "selectedSpawnPointId"), Is.Null);
+        Assert.That(GetWindowField<bool>(
+            window,
+            "isDraggingSpawnPoint"), Is.False);
+        Assert.That(GetWindowField<bool>(
+            window,
+            "isPlacingPoint"), Is.False);
+        Assert.That(GetWindowField<bool>(
+            window,
+            "spawnPointGeometryDirty"), Is.True);
+
+        RefreshSpawnPointGeometry(window, levelDataAsset);
+        Assert.That(GetSpawnPointGeometryCount(window), Is.EqualTo(1));
+
+        InvokeWindowMethod(
+            window,
+            "OnPlayModeStateChanged",
+            PlayModeStateChange.EnteredEditMode);
+        Assert.That(GetWindowField<string>(
+            window,
+            "selectedSpawnPointId"), Is.Null);
+        Assert.That(GetWindowField<bool>(
+            window,
+            "spawnPointGeometryDirty"), Is.True);
+    }
+
+    [Test]
     public void TryGetMaximumSelectableGeometry_UsesLargestPositiveRadiusAndOffset()
     {
         BallDataAsset smallBall =
@@ -347,6 +535,73 @@ public class LevelBallEditorWindowTests
         }
 
         serializedAsset.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private LevelBallEditorWindow CreateEditorWindow()
+    {
+        LevelBallEditorWindow window =
+            ScriptableObject.CreateInstance<LevelBallEditorWindow>();
+        objectsToDestroy.Add(window);
+
+        var serializedWindow = new SerializedObject(window);
+        serializedWindow.FindProperty("levelDataAsset").objectReferenceValue =
+            levelDataAsset;
+        serializedWindow.ApplyModifiedPropertiesWithoutUndo();
+        return window;
+    }
+
+    private static void RefreshSpawnPointGeometry(
+        LevelBallEditorWindow window,
+        LevelDataAsset levelData)
+    {
+        InvokeWindowMethod(
+            window,
+            "RefreshSpawnPointGeometryIfNeeded",
+            levelData.SpawnPoints);
+    }
+
+    private static int GetSpawnPointGeometryCount(
+        LevelBallEditorWindow window)
+    {
+        var geometry = (System.Collections.ICollection)GetWindowField<object>(
+            window,
+            "spawnPointGeometry");
+        return geometry.Count;
+    }
+
+    private static T GetWindowField<T>(
+        LevelBallEditorWindow window,
+        string fieldName)
+    {
+        FieldInfo field = typeof(LevelBallEditorWindow).GetField(
+            fieldName,
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(field, Is.Not.Null, "Missing field: " + fieldName);
+        return (T)field.GetValue(window);
+    }
+
+    private static void SetWindowField(
+        LevelBallEditorWindow window,
+        string fieldName,
+        object value)
+    {
+        FieldInfo field = typeof(LevelBallEditorWindow).GetField(
+            fieldName,
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(field, Is.Not.Null, "Missing field: " + fieldName);
+        field.SetValue(window, value);
+    }
+
+    private static void InvokeWindowMethod(
+        LevelBallEditorWindow window,
+        string methodName,
+        object argument)
+    {
+        MethodInfo method = typeof(LevelBallEditorWindow).GetMethod(
+            methodName,
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(method, Is.Not.Null, "Missing method: " + methodName);
+        method.Invoke(window, new[] { argument });
     }
 
     private BallDataAsset CreateBallDataAsset(

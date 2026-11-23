@@ -94,6 +94,55 @@ public static class LevelBallEditorAssetOperations
         }
     }
 
+    public static bool TrySetSpawnPointLocalPosition(
+        LevelDataAsset levelData,
+        string spawnPointId,
+        Vector2 localPosition)
+    {
+        if (levelData == null ||
+            string.IsNullOrEmpty(spawnPointId) ||
+            !IsFinite(localPosition.x) ||
+            !IsFinite(localPosition.y))
+            return false;
+
+        var serializedLevel = new SerializedObject(levelData);
+        serializedLevel.Update();
+
+        SerializedProperty spawnPoints =
+            serializedLevel.FindProperty("spawnPoints");
+        if (spawnPoints == null || !spawnPoints.isArray)
+            return false;
+
+        int matchingIndex = -1;
+        for (int i = 0; i < spawnPoints.arraySize; i++)
+        {
+            string id = spawnPoints
+                .GetArrayElementAtIndex(i)
+                .FindPropertyRelative("id")
+                .stringValue;
+            if (!string.Equals(id, spawnPointId, StringComparison.Ordinal))
+                continue;
+
+            if (matchingIndex >= 0)
+                return false;
+
+            matchingIndex = i;
+        }
+
+        if (matchingIndex < 0)
+            return false;
+
+        SerializedProperty position = spawnPoints
+            .GetArrayElementAtIndex(matchingIndex)
+            .FindPropertyRelative("localPosition");
+        position.vector2Value = localPosition;
+        if (!serializedLevel.ApplyModifiedProperties())
+            return false;
+
+        EditorUtility.SetDirty(levelData);
+        return true;
+    }
+
     private static string GenerateUniqueId(SerializedProperty spawnPoints)
     {
         var existingIds = new HashSet<string>(StringComparer.Ordinal);

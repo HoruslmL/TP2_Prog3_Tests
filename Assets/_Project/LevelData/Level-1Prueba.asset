@@ -12,48 +12,53 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 195a0c7b3dff47ddac8cb38399194546, type: 3}
   m_Name: Level-1Prueba
   m_EditorClassIdentifier: TP2.Gameplay::LevelDataAsset
-  seed: 4
+  seed: 67
   spawnPoints:
   - id: spawn-point-001
-    localPosition: {x: -1.4954858, y: 1.4709647}
+    localPosition: {x: -1.8919258, y: 1.3268045}
     spawnOptions:
     - ballData: {fileID: 11400000, guid: 793adbb5394adeb4aacbf40c211fb697, type: 2}
       spawnProbability: 30
     - ballData: {fileID: 11400000, guid: 06b101ce83ec5cd4cb20b49a612fb2f0, type: 2}
       spawnProbability: 70
   - id: spawn-point-002
-    localPosition: {x: 1.5125339, y: 1.4919996}
+    localPosition: {x: 1.8332348, y: 1.623352}
     spawnOptions:
     - ballData: {fileID: 11400000, guid: 06b101ce83ec5cd4cb20b49a612fb2f0, type: 2}
       spawnProbability: 35
     - ballData: {fileID: 11400000, guid: 793adbb5394adeb4aacbf40c211fb697, type: 2}
       spawnProbability: 65
   - id: spawn-point-003
-    localPosition: {x: 1.4914988, y: -0.506333}
+    localPosition: {x: 2.0375423, y: -0.39841092}
     spawnOptions:
     - ballData: {fileID: 11400000, guid: 793adbb5394adeb4aacbf40c211fb697, type: 2}
       spawnProbability: 50
     - ballData: {fileID: 11400000, guid: 06b101ce83ec5cd4cb20b49a612fb2f0, type: 2}
       spawnProbability: 50
   - id: spawn-point-004
-    localPosition: {x: -1.5375528, y: -0.4642629}
+    localPosition: {x: -1.5195327, y: -0.5363428}
     spawnOptions:
     - ballData: {fileID: 11400000, guid: 06b101ce83ec5cd4cb20b49a612fb2f0, type: 2}
       spawnProbability: 80
     - ballData: {fileID: 11400000, guid: 06b101ce83ec5cd4cb20b49a612fb2f0, type: 2}
       spawnProbability: 20
   - id: spawn-point-005
-    localPosition: {x: 0.14, y: 0.43}
+    localPosition: {x: -0.0041600913, y: 0.84446025}
     spawnOptions:
     - ballData: {fileID: 11400000, guid: 793adbb5394adeb4aacbf40c211fb697, type: 2}
       spawnProbability: 50
     - ballData: {fileID: 11400000, guid: 06b101ce83ec5cd4cb20b49a612fb2f0, type: 2}
       spawnProbability: 50
   - id: spawn-point-006
-    localPosition: {x: -1.46, y: 3.08}
+    localPosition: {x: -0.036419153, y: 2.7916796}
     spawnOptions:
     - ballData: {fileID: 11400000, guid: 793adbb5394adeb4aacbf40c211fb697, type: 2}
       spawnProbability: 45
     - ballData: {fileID: 11400000, guid: 06b101ce83ec5cd4cb20b49a612fb2f0, type: 2}
       spawnProbability: 55
+  - id: spawn-point-007
+    localPosition: {x: 4.12755, y: 0.5762855}
+    spawnOptions:
+    - ballData: {fileID: 11400000, guid: 06b101ce83ec5cd4cb20b49a612fb2f0, type: 2}
+      spawnProbability: 100
   enableDynamicBalance: 1
