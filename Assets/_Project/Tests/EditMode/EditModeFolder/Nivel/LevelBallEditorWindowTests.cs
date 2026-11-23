@@ -209,6 +209,110 @@ public class LevelBallEditorWindowTests
             Is.EqualTo(new Vector2(2f, 5f)));
     }
 
+    [Test]
+    public void TryGetMaximumSelectableGeometry_UsesLargestPositiveRadiusAndOffset()
+    {
+        BallDataAsset smallBall =
+            CreateBallDataAsset("small", 0.5f, 1f, new Vector2(0.1f, 0f));
+        BallDataAsset largeBall =
+            CreateBallDataAsset("large", 0.4f, 2f, new Vector2(0.25f, -0.5f));
+        BallDataAsset zeroProbabilityBall =
+            CreateBallDataAsset("unused", 2f, 1f, Vector2.zero);
+        SetSpawnPoints(
+            new SpawnPointSpec(
+                "entry",
+                Vector2.zero,
+                new[]
+                {
+                    new SpawnOptionSpec(smallBall, 50f),
+                    new SpawnOptionSpec(largeBall, 50f),
+                    new SpawnOptionSpec(zeroProbabilityBall, 0f),
+                    new SpawnOptionSpec(null, 0f)
+                }));
+
+        bool success =
+            BallColliderGeometry.TryGetMaximumSelectableGeometry(
+                levelDataAsset.SpawnPoints[0],
+                out float radius,
+                out Vector2 centerOffset);
+
+        Assert.That(success, Is.True);
+        Assert.That(radius, Is.EqualTo(0.8f).Within(0.0001f));
+        Assert.That(centerOffset, Is.EqualTo(new Vector2(0.5f, -1f)));
+    }
+
+    [Test]
+    public void TryGetMaximumSelectableGeometry_RejectsMissingOptionsOrInvalidPositiveGeometry()
+    {
+        SetSpawnPoints(
+            new SpawnPointSpec(
+                "empty",
+                Vector2.zero,
+                new SpawnOptionSpec[0]));
+        Assert.That(
+            BallColliderGeometry.TryGetMaximumSelectableGeometry(
+                levelDataAsset.SpawnPoints[0],
+                out _,
+                out _),
+            Is.False);
+
+        BallDataAsset validBall =
+            CreateBallDataAsset("valid", 0.5f, 1f, Vector2.zero);
+        BallDataAsset invalidBall = CreateBallDataAssetWithoutCollider();
+        SetSpawnPoints(
+            new SpawnPointSpec(
+                "invalid",
+                Vector2.zero,
+                new[]
+                {
+                    new SpawnOptionSpec(validBall, 50f),
+                    new SpawnOptionSpec(invalidBall, 50f)
+                }));
+
+        Assert.That(
+            BallColliderGeometry.TryGetMaximumSelectableGeometry(
+                levelDataAsset.SpawnPoints[0],
+                out float radius,
+                out Vector2 centerOffset),
+            Is.False);
+        Assert.That(radius, Is.EqualTo(0f));
+        Assert.That(centerOffset, Is.EqualTo(Vector2.zero));
+    }
+
+    [Test]
+    public void TryGetMaximumSelectableGeometry_ReflectsOptionAndSizeChanges()
+    {
+        BallDataAsset ballData =
+            CreateBallDataAsset("ball", 0.5f, 1f, Vector2.zero);
+        GameObject prefab = ballData.BallPrefab;
+        SetSpawnPoints(
+            new SpawnPointSpec(
+                "entry",
+                Vector2.zero,
+                new[] { new SpawnOptionSpec(ballData, 100f) }));
+
+        Assert.That(
+            BallColliderGeometry.TryGetMaximumSelectableGeometry(
+                levelDataAsset.SpawnPoints[0],
+                out float initialRadius,
+                out _),
+            Is.True);
+        Assert.That(initialRadius, Is.EqualTo(0.5f));
+
+        var serializedBallData = new SerializedObject(ballData);
+        serializedBallData.FindProperty("scale").floatValue = 2f;
+        Assert.That(serializedBallData.ApplyModifiedPropertiesWithoutUndo(), Is.True);
+        prefab.GetComponent<CircleCollider2D>().radius = 0.75f;
+
+        Assert.That(
+            BallColliderGeometry.TryGetMaximumSelectableGeometry(
+                levelDataAsset.SpawnPoints[0],
+                out float updatedRadius,
+                out _),
+            Is.True);
+        Assert.That(updatedRadius, Is.EqualTo(1.5f));
+    }
+
     private void SetSpawnPoints(params SpawnPointSpec[] points)
     {
         var serializedAsset = new SerializedObject(levelDataAsset);
@@ -243,6 +347,43 @@ public class LevelBallEditorWindowTests
         }
 
         serializedAsset.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private BallDataAsset CreateBallDataAsset(
+        string id,
+        float colliderRadius,
+        float scale,
+        Vector2 colliderOffset)
+    {
+        var prefab = new GameObject(id + "Prefab");
+        objectsToDestroy.Add(prefab);
+        CircleCollider2D collider = prefab.AddComponent<CircleCollider2D>();
+        collider.radius = colliderRadius;
+        collider.offset = colliderOffset;
+
+        BallDataAsset asset = ScriptableObject.CreateInstance<BallDataAsset>();
+        objectsToDestroy.Add(asset);
+        var serializedAsset = new SerializedObject(asset);
+        serializedAsset.FindProperty("id").stringValue = id;
+        serializedAsset.FindProperty("scale").floatValue = scale;
+        serializedAsset.FindProperty("ballPrefab").objectReferenceValue = prefab;
+        serializedAsset.ApplyModifiedPropertiesWithoutUndo();
+        return asset;
+    }
+
+    private BallDataAsset CreateBallDataAssetWithoutCollider()
+    {
+        var prefab = new GameObject("TestBallPrefabWithoutCircleCollider");
+        objectsToDestroy.Add(prefab);
+
+        BallDataAsset asset = ScriptableObject.CreateInstance<BallDataAsset>();
+        objectsToDestroy.Add(asset);
+        var serializedAsset = new SerializedObject(asset);
+        serializedAsset.FindProperty("id").stringValue = "invalid";
+        serializedAsset.FindProperty("scale").floatValue = 1f;
+        serializedAsset.FindProperty("ballPrefab").objectReferenceValue = prefab;
+        serializedAsset.ApplyModifiedPropertiesWithoutUndo();
+        return asset;
     }
 
     private sealed class SpawnPointSpec

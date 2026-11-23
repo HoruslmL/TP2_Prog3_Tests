@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -6,6 +7,10 @@ public sealed class LevelBallEditorWindow : EditorWindow
     [SerializeField] private LevelDataAsset levelDataAsset;
     [SerializeField] private Transform levelRoot;
     [SerializeField] private bool isAddingPoints;
+
+    private readonly List<SpawnPointGeometry> spawnPointGeometry =
+        new List<SpawnPointGeometry>();
+    private bool spawnPointGeometryDirty = true;
 
     [MenuItem("Tools/Level Ball Editor")]
     private static void Open()
@@ -17,13 +22,20 @@ public sealed class LevelBallEditorWindow : EditorWindow
     {
         SceneView.duringSceneGui -= OnSceneGUI;
         SceneView.duringSceneGui += OnSceneGUI;
+        Undo.undoRedoPerformed -= OnUndoRedo;
         Undo.undoRedoPerformed += OnUndoRedo;
+        Undo.postprocessModifications -= OnPostprocessModifications;
+        Undo.postprocessModifications += OnPostprocessModifications;
+        EditorApplication.projectChanged -= OnProjectChanged;
+        EditorApplication.projectChanged += OnProjectChanged;
     }
 
     private void OnDisable()
     {
         SceneView.duringSceneGui -= OnSceneGUI;
         Undo.undoRedoPerformed -= OnUndoRedo;
+        Undo.postprocessModifications -= OnPostprocessModifications;
+        EditorApplication.projectChanged -= OnProjectChanged;
     }
 
     private void OnGUI()
@@ -41,7 +53,10 @@ public sealed class LevelBallEditorWindow : EditorWindow
             true);
 
         if (EditorGUI.EndChangeCheck())
+        {
+            InvalidateSpawnPointGeometry();
             SceneView.RepaintAll();
+        }
 
         if (levelDataAsset == null || levelRoot == null)
         {
@@ -110,6 +125,7 @@ public sealed class LevelBallEditorWindow : EditorWindow
         LevelBallEditorAssetOperations.AddSpawnPoint(
             levelDataAsset,
             localPosition);
+        InvalidateSpawnPointGeometry();
         currentEvent.Use();
         Repaint();
         SceneView.RepaintAll();
@@ -132,12 +148,22 @@ public sealed class LevelBallEditorWindow : EditorWindow
 
         planeNormal.Normalize();
         Color previousColor = Handles.color;
-        Handles.color = new Color(1f, 0.75f, 0.1f, 1f);
+        Color markerColor = new Color(1f, 0.75f, 0.1f, 1f);
+        Color radiusColor = new Color(0.25f, 0.8f, 1f, 0.9f);
+        RefreshSpawnPointGeometryIfNeeded();
 
         try
         {
-            foreach (BallSpawnPointData spawnPoint in levelDataAsset.SpawnPoints)
+            IReadOnlyList<BallSpawnPointData> spawnPoints =
+                levelDataAsset.SpawnPoints;
+            if (spawnPoints == null)
+                return;
+
+            for (int pointIndex = 0;
+                 pointIndex < spawnPoints.Count;
+                 pointIndex++)
             {
+                BallSpawnPointData spawnPoint = spawnPoints[pointIndex];
                 if (spawnPoint == null)
                     continue;
 
@@ -160,6 +186,27 @@ public sealed class LevelBallEditorWindow : EditorWindow
                     !IsFinite(markerRadius))
                     continue;
 
+                SpawnPointGeometry geometry =
+                    spawnPointGeometry[pointIndex];
+                if (geometry.HasValidRadius)
+                {
+                    Vector3 colliderCenter = new Vector3(
+                        worldPosition.x + geometry.CenterOffset.x,
+                        worldPosition.y + geometry.CenterOffset.y,
+                        0f);
+                    if (geometry.Radius > 0f &&
+                        IsFinite(geometry.Radius) &&
+                        IsFinite(colliderCenter))
+                    {
+                        Handles.color = radiusColor;
+                        Handles.DrawWireDisc(
+                            colliderCenter,
+                            Vector3.forward,
+                            geometry.Radius);
+                    }
+                }
+
+                Handles.color = markerColor;
                 Handles.DrawWireDisc(
                     worldPosition,
                     planeNormal,
@@ -177,8 +224,151 @@ public sealed class LevelBallEditorWindow : EditorWindow
 
     private void OnUndoRedo()
     {
+        InvalidateSpawnPointGeometry();
         Repaint();
         SceneView.RepaintAll();
+    }
+
+    private UndoPropertyModification[] OnPostprocessModifications(
+        UndoPropertyModification[] modifications)
+    {
+        if (modifications == null)
+            return modifications;
+
+        for (int i = 0; i < modifications.Length; i++)
+        {
+            PropertyModification currentValue =
+                modifications[i].currentValue;
+            if (currentValue == null ||
+                !IsRelevantModifiedObject(currentValue.target))
+                continue;
+
+            InvalidateSpawnPointGeometry();
+            SceneView.RepaintAll();
+            break;
+        }
+
+        return modifications;
+    }
+
+    private void OnProjectChanged()
+    {
+        InvalidateSpawnPointGeometry();
+        SceneView.RepaintAll();
+    }
+
+    private void InvalidateSpawnPointGeometry()
+    {
+        spawnPointGeometryDirty = true;
+    }
+
+    private void RefreshSpawnPointGeometryIfNeeded()
+    {
+        if (!spawnPointGeometryDirty)
+            return;
+
+        spawnPointGeometry.Clear();
+        IReadOnlyList<BallSpawnPointData> spawnPoints =
+            levelDataAsset.SpawnPoints;
+        if (spawnPoints != null)
+        {
+            for (int i = 0; i < spawnPoints.Count; i++)
+            {
+                bool hasValidRadius =
+                    BallColliderGeometry.TryGetMaximumSelectableGeometry(
+                        spawnPoints[i],
+                        out float radius,
+                        out Vector2 centerOffset);
+                spawnPointGeometry.Add(
+                    new SpawnPointGeometry(
+                        hasValidRadius,
+                        radius,
+                        centerOffset));
+            }
+        }
+
+        spawnPointGeometryDirty = false;
+    }
+
+    private bool IsRelevantModifiedObject(Object modifiedObject)
+    {
+        if (modifiedObject == null)
+            return false;
+
+        if (modifiedObject == levelDataAsset)
+            return true;
+
+        IReadOnlyList<BallSpawnPointData> spawnPoints =
+            levelDataAsset == null ? null : levelDataAsset.SpawnPoints;
+        if (spawnPoints == null)
+            return false;
+
+        for (int i = 0; i < spawnPoints.Count; i++)
+        {
+            BallSpawnPointData spawnPoint = spawnPoints[i];
+            if (spawnPoint == null || spawnPoint.SpawnOptions == null)
+                continue;
+
+            IReadOnlyList<BallSpawnOption> options = spawnPoint.SpawnOptions;
+            for (int optionIndex = 0;
+                 optionIndex < options.Count;
+                 optionIndex++)
+            {
+                BallSpawnOption option = options[optionIndex];
+                BallDataAsset ballData = option == null ? null : option.BallData;
+                if (ballData != null && modifiedObject == ballData)
+                    return true;
+            }
+        }
+
+        Transform changedTransform = GetTransform(modifiedObject);
+        if (changedTransform == null)
+            return false;
+
+        if (levelRoot != null &&
+            (changedTransform == levelRoot ||
+             levelRoot.IsChildOf(changedTransform)))
+            return true;
+
+        for (int i = 0; i < spawnPoints.Count; i++)
+        {
+            BallSpawnPointData spawnPoint = spawnPoints[i];
+            if (spawnPoint == null || spawnPoint.SpawnOptions == null)
+                continue;
+
+            IReadOnlyList<BallSpawnOption> options = spawnPoint.SpawnOptions;
+            for (int optionIndex = 0;
+                 optionIndex < options.Count;
+                 optionIndex++)
+            {
+                BallSpawnOption option = options[optionIndex];
+                BallDataAsset ballData = option == null ? null : option.BallData;
+                if (ballData == null)
+                    continue;
+
+                GameObject prefab = ballData.BallPrefab;
+                if (prefab != null &&
+                    (changedTransform == prefab.transform ||
+                     changedTransform.IsChildOf(prefab.transform)))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static Transform GetTransform(Object modifiedObject)
+    {
+        Transform transform = modifiedObject as Transform;
+        if (transform != null)
+            return transform;
+
+        Component component = modifiedObject as Component;
+        if (component != null)
+            return component.transform;
+
+        GameObject gameObject = modifiedObject as GameObject;
+        return gameObject == null ? null : gameObject.transform;
     }
 
     private static bool IsFinite(Vector3 value)
@@ -191,5 +381,22 @@ public sealed class LevelBallEditorWindow : EditorWindow
     private static bool IsFinite(float value)
     {
         return !float.IsNaN(value) && !float.IsInfinity(value);
+    }
+
+    private readonly struct SpawnPointGeometry
+    {
+        public readonly bool HasValidRadius;
+        public readonly float Radius;
+        public readonly Vector2 CenterOffset;
+
+        public SpawnPointGeometry(
+            bool hasValidRadius,
+            float radius,
+            Vector2 centerOffset)
+        {
+            HasValidRadius = hasValidRadius;
+            Radius = radius;
+            CenterOffset = centerOffset;
+        }
     }
 }

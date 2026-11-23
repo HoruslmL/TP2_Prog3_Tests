@@ -315,119 +315,18 @@ public static class LevelDataValidator
             return;
         }
 
-        GameObject prefab = ballData.BallPrefab;
-        if (prefab == null)
+        bool hasValidGeometry = BallColliderGeometry.TryGetEffectiveGeometry(
+            ballData,
+            out float effectiveRadius,
+            out Vector2 effectiveCenterOffset,
+            out BallColliderGeometryIssue geometryIssues);
+        if (!hasValidGeometry)
         {
-            AddPhysicalDataIssue(
-                issues,
-                LevelDataValidationErrorCode.MissingBallPrefab,
+            AddColliderGeometryIssues(
+                geometryIssues,
                 pointIndex,
                 pointId,
-                "El BallDataAsset no tiene un prefab de bolita asignado.");
-            state.ConfigurationsResolved = false;
-            return;
-        }
-
-        CircleCollider2D[] colliders =
-            prefab.GetComponentsInChildren<CircleCollider2D>(true);
-        int rootColliderCount = 0;
-        bool hasChildCollider = false;
-        for (int i = 0; i < colliders.Length; i++)
-        {
-            if (colliders[i] == null)
-                continue;
-
-            if (colliders[i].transform == prefab.transform)
-                rootColliderCount++;
-            else
-                hasChildCollider = true;
-        }
-
-        bool hasUnsupportedColliderConfiguration = false;
-        if (hasChildCollider)
-        {
-            AddPhysicalDataIssue(
-                issues,
-                LevelDataValidationErrorCode.UnsupportedChildCircleCollider,
-                pointIndex,
-                pointId,
-                "El validador no admite CircleCollider2D en objetos hijo del prefab.");
-            hasUnsupportedColliderConfiguration = true;
-        }
-
-        if (rootColliderCount > 1)
-        {
-            AddPhysicalDataIssue(
-                issues,
-                LevelDataValidationErrorCode.UnsupportedMultipleRootCircleColliders,
-                pointIndex,
-                pointId,
-                "El validador admite un solo CircleCollider2D en la raíz del prefab.");
-            hasUnsupportedColliderConfiguration = true;
-        }
-
-        if (hasUnsupportedColliderConfiguration)
-        {
-            state.ConfigurationsResolved = false;
-            return;
-        }
-
-        if (rootColliderCount == 0)
-        {
-            AddPhysicalDataIssue(
-                issues,
-                LevelDataValidationErrorCode.MissingCircleCollider,
-                pointIndex,
-                pointId,
-                "El prefab debe tener un CircleCollider2D en su objeto raíz.");
-            state.ConfigurationsResolved = false;
-            return;
-        }
-
-        CircleCollider2D collider = prefab.GetComponent<CircleCollider2D>();
-        float runtimeScale = ballData.ToBallData().Scale;
-        if (!IsFinite(runtimeScale) || runtimeScale <= 0f)
-        {
-            AddPhysicalDataIssue(
-                issues,
-                LevelDataValidationErrorCode.InvalidBallScale,
-                pointIndex,
-                pointId,
-                "La escala de la bolita debe ser un valor finito mayor que cero.");
-            state.ConfigurationsResolved = false;
-            return;
-        }
-
-        float colliderRadius = collider.radius;
-        Vector2 colliderOffset = collider.offset;
-        if (!IsFinite(colliderRadius) ||
-            colliderRadius < 0f ||
-            !IsFinite(colliderOffset.x) ||
-            !IsFinite(colliderOffset.y))
-        {
-            AddPhysicalDataIssue(
-                issues,
-                LevelDataValidationErrorCode.InvalidColliderRadius,
-                pointIndex,
-                pointId,
-                "El radio o el offset del CircleCollider2D no son válidos.");
-            state.ConfigurationsResolved = false;
-            return;
-        }
-
-        // BallController reemplaza la escala raíz del prefab por BallData.Scale.
-        float effectiveRadius = colliderRadius * runtimeScale;
-        Vector2 effectiveCenterOffset = colliderOffset * runtimeScale;
-        if (!IsFinite(effectiveRadius) ||
-            !IsFinite(effectiveCenterOffset.x) ||
-            !IsFinite(effectiveCenterOffset.y))
-        {
-            AddPhysicalDataIssue(
-                issues,
-                LevelDataValidationErrorCode.InvalidColliderRadius,
-                pointIndex,
-                pointId,
-                "No se pudo determinar una configuración física finita para la bolita.");
+                issues);
             state.ConfigurationsResolved = false;
             return;
         }
@@ -436,6 +335,83 @@ public static class LevelDataValidator
             new ActiveColliderConfiguration(
                 effectiveCenterOffset,
                 effectiveRadius));
+    }
+
+    private static void AddColliderGeometryIssues(
+        BallColliderGeometryIssue geometryIssues,
+        int pointIndex,
+        string pointId,
+        List<LevelDataValidationIssue> issues)
+    {
+        if ((geometryIssues & BallColliderGeometryIssue.MissingBallPrefab) != 0)
+        {
+            AddPhysicalDataIssue(
+                issues,
+                LevelDataValidationErrorCode.MissingBallPrefab,
+                pointIndex,
+                pointId,
+                "El BallDataAsset no tiene un prefab de bolita asignado.");
+        }
+
+        if ((geometryIssues & BallColliderGeometryIssue.UnsupportedChildCircleCollider) != 0)
+        {
+            AddPhysicalDataIssue(
+                issues,
+                LevelDataValidationErrorCode.UnsupportedChildCircleCollider,
+                pointIndex,
+                pointId,
+                "El validador no admite CircleCollider2D en objetos hijo del prefab.");
+        }
+
+        if ((geometryIssues & BallColliderGeometryIssue.UnsupportedMultipleRootCircleColliders) != 0)
+        {
+            AddPhysicalDataIssue(
+                issues,
+                LevelDataValidationErrorCode.UnsupportedMultipleRootCircleColliders,
+                pointIndex,
+                pointId,
+                "El validador admite un solo CircleCollider2D en la raíz del prefab.");
+        }
+
+        if ((geometryIssues & BallColliderGeometryIssue.MissingCircleCollider) != 0)
+        {
+            AddPhysicalDataIssue(
+                issues,
+                LevelDataValidationErrorCode.MissingCircleCollider,
+                pointIndex,
+                pointId,
+                "El prefab debe tener un CircleCollider2D en su objeto raíz.");
+        }
+
+        if ((geometryIssues & BallColliderGeometryIssue.InvalidBallScale) != 0)
+        {
+            AddPhysicalDataIssue(
+                issues,
+                LevelDataValidationErrorCode.InvalidBallScale,
+                pointIndex,
+                pointId,
+                "La escala de la bolita debe ser un valor finito mayor que cero.");
+        }
+
+        if ((geometryIssues & BallColliderGeometryIssue.InvalidColliderRadius) != 0)
+        {
+            AddPhysicalDataIssue(
+                issues,
+                LevelDataValidationErrorCode.InvalidColliderRadius,
+                pointIndex,
+                pointId,
+                "El radio o el offset del CircleCollider2D no son válidos.");
+        }
+
+        if ((geometryIssues & BallColliderGeometryIssue.InvalidEffectiveGeometry) != 0)
+        {
+            AddPhysicalDataIssue(
+                issues,
+                LevelDataValidationErrorCode.InvalidColliderRadius,
+                pointIndex,
+                pointId,
+                "No se pudo determinar una configuración física finita para la bolita.");
+        }
     }
 
     private static void ValidateOverlaps(
