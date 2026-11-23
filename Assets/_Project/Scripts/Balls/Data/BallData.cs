@@ -1,6 +1,7 @@
 public sealed class BallData
 {
     public string Id { get; }
+    public string DisplayName { get; }
     public float Mass { get; }
     public BallAbilityType AbilityType { get; }
     public float EffectRadius { get; }
@@ -13,9 +14,13 @@ public sealed class BallData
         BallAbilityType abilityType,
         float effectRadius = 0f,
         float effectDelay = 1f,
-        float scale = 1f)
+        float scale = 1f,
+        string displayName = null)
     {
         Id = id;
+        DisplayName = string.IsNullOrWhiteSpace(displayName)
+            ? id
+            : displayName;
         Mass = mass;
         AbilityType = abilityType;
         EffectRadius = effectRadius;

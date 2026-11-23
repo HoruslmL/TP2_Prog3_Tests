@@ -52,6 +52,7 @@ public class BallPool : MonoBehaviour
                 return null;
 
             availableBalls.RemoveAt(lastIndex);
+            ball.gameObject.name = data.DisplayName;
             ball.gameObject.SetActive(true);
 
             return ball;
@@ -71,6 +72,7 @@ public class BallPool : MonoBehaviour
 
         newBall.SetPool(this);
         allBalls.Add(newBall);
+        newBall.gameObject.name = data.DisplayName;
 
         return newBall;
     }

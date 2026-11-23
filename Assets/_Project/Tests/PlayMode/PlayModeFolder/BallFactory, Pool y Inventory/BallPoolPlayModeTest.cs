@@ -36,7 +36,8 @@ public class BallPoolPlayModeTest
             BallAbilityType.None,
             0f,
             1f,
-            1.5f
+            1.5f,
+            "Normal"
         );
 
         explosiveData = new BallData(
@@ -45,7 +46,8 @@ public class BallPoolPlayModeTest
             BallAbilityType.Explosive,
             0.1f,
             0.1f,
-            1.5f
+            1.5f,
+            "Explosive"
         );
 
         poolObject = new GameObject("BallPool");
@@ -64,6 +66,7 @@ public class BallPoolPlayModeTest
 
         Assert.IsNotNull(ball);
         Assert.IsTrue(ball.gameObject.activeSelf);
+        Assert.AreEqual("Normal", ball.gameObject.name);
         Assert.AreEqual(Quaternion.identity, ball.transform.rotation);
 
         Assert.AreEqual(
@@ -183,6 +186,7 @@ public class BallPoolPlayModeTest
         );
 
         Assert.IsNotNull(explosiveBall);
+        Assert.AreEqual("Explosive", explosiveBall.gameObject.name);
 
         ExplosiveEffectExecutor executor =
             explosiveBall.GetComponent<ExplosiveEffectExecutor>();
@@ -208,6 +212,7 @@ public class BallPoolPlayModeTest
 
         Assert.AreSame(explosiveBall, reusedBall);
         Assert.IsTrue(reusedBall.gameObject.activeSelf);
+        Assert.AreEqual("Normal", reusedBall.gameObject.name);
 
         Assert.IsNull(
             reusedBall.GetComponent<ExplosiveEffectExecutor>()
@@ -224,6 +229,32 @@ public class BallPoolPlayModeTest
         );
 
         yield return null;
+    }
+
+    [UnityTest]
+    public IEnumerator NormalBall_CanBeReusedAsExplosiveWithUpdatedName()
+    {
+        BallController normalBall = pool.GetBall(
+            normalData,
+            Vector2.zero);
+        Assert.IsNotNull(normalBall);
+        Assert.AreEqual("Normal", normalBall.gameObject.name);
+
+        normalBall.Despawn();
+        while (pool.AvailableCount == 0)
+            yield return null;
+
+        BallController reusedBall = pool.GetBall(
+            explosiveData,
+            Vector2.one);
+
+        Assert.AreSame(normalBall, reusedBall);
+        Assert.AreEqual("Explosive", reusedBall.gameObject.name);
+        Assert.AreEqual(
+            BallAbilityType.Explosive,
+            reusedBall.Runtime.Data.AbilityType);
+        Assert.IsNotNull(
+            reusedBall.GetComponent<ExplosiveEffectExecutor>());
     }
 
     [UnityTearDown]

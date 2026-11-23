@@ -11,6 +11,7 @@ public class BallDataAssetTests
 
         var serializedAsset = new SerializedObject(asset);
         serializedAsset.FindProperty("id").stringValue = "Explosive";
+        serializedAsset.FindProperty("displayName").stringValue = "Explosive Ball";
         serializedAsset.FindProperty("mass").floatValue = 2f;
         serializedAsset.FindProperty("abilityType").enumValueIndex =
             (int)BallAbilityType.Explosive;
@@ -21,10 +22,28 @@ public class BallDataAssetTests
         BallData data = asset.ToBallData();
 
         Assert.That(data.Id, Is.EqualTo("Explosive"));
+        Assert.That(data.DisplayName, Is.EqualTo("Explosive Ball"));
         Assert.That(data.Mass, Is.EqualTo(2f));
         Assert.That(data.AbilityType, Is.EqualTo(BallAbilityType.Explosive));
         Assert.That(data.EffectRadius, Is.EqualTo(3f));
         Assert.That(data.EffectDelay, Is.EqualTo(1f));
+
+        Object.DestroyImmediate(asset);
+    }
+
+    [Test]
+    public void ToBallData_WhenDisplayNameIsEmpty_FallsBackToId()
+    {
+        var asset = ScriptableObject.CreateInstance<BallDataAsset>();
+
+        var serializedAsset = new SerializedObject(asset);
+        serializedAsset.FindProperty("id").stringValue = "Normal";
+        serializedAsset.FindProperty("displayName").stringValue = " ";
+        serializedAsset.ApplyModifiedPropertiesWithoutUndo();
+
+        BallData data = asset.ToBallData();
+
+        Assert.That(data.DisplayName, Is.EqualTo("Normal"));
 
         Object.DestroyImmediate(asset);
     }

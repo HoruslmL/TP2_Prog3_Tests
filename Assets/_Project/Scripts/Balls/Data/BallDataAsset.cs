@@ -9,6 +9,7 @@ using UnityEngine.Serialization;
 public class BallDataAsset : ScriptableObject
 {
     [SerializeField] private string id;
+    [SerializeField] private string displayName;
     [SerializeField, Min(0.01f)] private float mass = 1f;
     [SerializeField] private BallAbilityType abilityType;
 
@@ -23,6 +24,9 @@ public class BallDataAsset : ScriptableObject
 
     [SerializeField] private GameObject ballPrefab;
 
+    public string DisplayName =>
+        string.IsNullOrWhiteSpace(displayName) ? id : displayName;
+
     public GameObject BallPrefab => ballPrefab;
 
     public BallData ToBallData()
@@ -33,7 +37,8 @@ public class BallDataAsset : ScriptableObject
             abilityType,
             effectRadius,
             effectDelay,
-            scale
+            scale,
+            DisplayName
         );
     }
 }

@@ -72,8 +72,8 @@ public class LevelBallSpawnerPlayModeTests
             FindObjectsSortMode.None);
 
         Assert.AreEqual(2, balls.Length);
-        AssertBallAt(balls, expectedFirst, "First");
-        AssertBallAt(balls, expectedSecond, "Second");
+        AssertBallAt(balls, expectedFirst, "First", "First Display Name");
+        AssertBallAt(balls, expectedSecond, "Second", "Second Display Name");
         Assert.AreEqual(0, levelData.Seed);
         Assert.AreEqual(100f, levelData.SpawnPoints[0].SpawnOptions[0].SpawnProbability);
         Assert.AreSame(firstBallData, levelData.SpawnPoints[0].SpawnOptions[0].BallData);
@@ -185,6 +185,8 @@ public class LevelBallSpawnerPlayModeTests
         BallDataAsset asset = ScriptableObject.CreateInstance<BallDataAsset>();
         var serializedAsset = new SerializedObject(asset);
         serializedAsset.FindProperty("id").stringValue = id;
+        serializedAsset.FindProperty("displayName").stringValue =
+            id + " Display Name";
         serializedAsset.FindProperty("mass").floatValue = 1f;
         serializedAsset.FindProperty("abilityType").enumValueIndex =
             (int)BallAbilityType.None;
@@ -238,7 +240,8 @@ public class LevelBallSpawnerPlayModeTests
     private static void AssertBallAt(
         BallController[] balls,
         Vector3 expectedPosition,
-        string expectedDataId)
+        string expectedDataId,
+        string expectedObjectName)
     {
         for (int i = 0; i < balls.Length; i++)
         {
@@ -248,6 +251,7 @@ public class LevelBallSpawnerPlayModeTests
                 continue;
 
             Assert.AreEqual(expectedDataId, balls[i].Runtime.Data.Id);
+            Assert.AreEqual(expectedObjectName, balls[i].gameObject.name);
             return;
         }
 

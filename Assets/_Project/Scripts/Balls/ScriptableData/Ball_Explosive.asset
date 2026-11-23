@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Ball_Explosive
   m_EditorClassIdentifier: TP2.Gameplay::BallDataAsset
   id: Explosive
+  displayName: Explosive
   mass: 1
   abilityType: 1
   effectRadius: 3

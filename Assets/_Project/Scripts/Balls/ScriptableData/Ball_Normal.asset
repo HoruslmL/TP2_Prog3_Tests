@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Ball_Normal
   m_EditorClassIdentifier: TP2.Gameplay::BallDataAsset
   id: Normal
+  displayName: Normal
   mass: 1
   abilityType: 0
   explosionRadius: 0
