@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 195a0c7b3dff47ddac8cb38399194546, type: 3}
   m_Name: Level-1Prueba
   m_EditorClassIdentifier: TP2.Gameplay::LevelDataAsset
-  seed: 0
+  seed: 4
   spawnPoints:
   - id: spawn-point-001
     localPosition: {x: -1.4954858, y: 1.4709647}
@@ -42,4 +42,18 @@ MonoBehaviour:
       spawnProbability: 80
     - ballData: {fileID: 11400000, guid: 06b101ce83ec5cd4cb20b49a612fb2f0, type: 2}
       spawnProbability: 20
+  - id: spawn-point-005
+    localPosition: {x: 0.14, y: 0.43}
+    spawnOptions:
+    - ballData: {fileID: 11400000, guid: 793adbb5394adeb4aacbf40c211fb697, type: 2}
+      spawnProbability: 50
+    - ballData: {fileID: 11400000, guid: 06b101ce83ec5cd4cb20b49a612fb2f0, type: 2}
+      spawnProbability: 50
+  - id: spawn-point-006
+    localPosition: {x: -1.46, y: 3.08}
+    spawnOptions:
+    - ballData: {fileID: 11400000, guid: 793adbb5394adeb4aacbf40c211fb697, type: 2}
+      spawnProbability: 45
+    - ballData: {fileID: 11400000, guid: 06b101ce83ec5cd4cb20b49a612fb2f0, type: 2}
+      spawnProbability: 55
   enableDynamicBalance: 1

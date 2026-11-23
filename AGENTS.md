@@ -15,8 +15,8 @@
   - `Balls/Factory/`: `BallFactory`, `BallPool` y `BallSpawner`.
   - `GameFlow/`: eventos, estados, `GameStateMachine` y `GameFlowController`.
   - `Inventory/`: `Inventory`.
-  - `Levels/`: modelo de configuracion de niveles del TP3 (`LevelDataAsset`, `BallSpawnPointData`, `BallSpawnOption`), `LevelDataValidator` y `BallDistributionGenerator`.
-  - `TestingInGame/` y `BallTestLauncher.cs`: utilidades de prueba dentro del juego.
+  - `Levels/`: modelo de configuracion de niveles del TP3 (`LevelDataAsset`, `BallSpawnPointData`, `BallSpawnOption`), `LevelDataValidator`, `BallDistributionGenerator` y `LevelBallSpawner`.
+  - `TestingInGame/` y `BallTestLauncher.cs`: utilidades de prueba dentro del juego, incluido `LevelGenerationBootstrap`.
   - `TP2.Gameplay.asmdef`: assembly de Runtime; actualmente no declara referencias adicionales.
 - `Assets/_Project/Tests/EditMode/`: tests EditMode; assembly `EditModeFolder`, restringido a la plataforma Editor. Cubre datos, validacion y generacion de distribuciones de niveles, interacciones, inventario y flujo/eventos.
 - `Assets/_Project/Tests/PlayMode/`: tests PlayMode; assembly `PlayModeFolder`. Cubre control de bolitas, factory/pool/spawner, efectos y flujo.
@@ -52,6 +52,9 @@ Ejecutado con Unity `6000.3.11f1` el 2026-11-16:
 
 - Mantener el codigo del juego dentro de `TP2.Gameplay` y sus dependencias orientadas hacia las abstracciones de Runtime, no hacia los tests o el Editor.
 - Mantener separados los datos de las bolitas (`BallData`/`BallDataAsset`), el comportamiento de ejecucion, las habilidades y las responsabilidades de creacion/pooling.
+- `LevelBallSpawner` valida y genera la distribucion del nivel, luego solicita las bolitas a un `BallPool` ya inicializado. No inicializa el pool ni consume inventario.
+- La generacion se solicita explicitamente mediante `LevelBallSpawner.TrySpawnLevel()`; no esta conectada automaticamente a `GameFlowController`. Quien invoque el metodo debe asegurar que `BallPool.Initialize()` se haya ejecutado previamente.
+- `LevelGenerationBootstrap` es una utilidad de prueba en Runtime que inicializa el pool y luego invoca explicitamente `TrySpawnLevel()`.
 - Usar `IBallAbility` y las interfaces existentes para extensiones de habilidades; evitar acoplar el flujo de juego a una implementacion concreta cuando ya exista una abstraccion.
 - Mantener los tests EditMode y PlayMode en sus assemblies existentes y respetar sus plataformas. No cambiar o relajar tests solo para hacer pasar una implementacion.
 - Preservar el comportamiento y las referencias serializadas existentes en escenas, prefabs y assets; hacer cambios acotados y actualizar pruebas solo para comportamiento nuevo o corregido.
