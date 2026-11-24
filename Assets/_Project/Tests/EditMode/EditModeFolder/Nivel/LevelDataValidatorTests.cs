@@ -428,6 +428,146 @@ public class LevelDataValidatorTests
             LevelDataValidationErrorCode.OverlappingSpawnPoints);
     }
 
+    [TestCase(1.4f, 0.5f, true, 0.4f)]
+    [TestCase(1.5f, 0.5f, false, 0.5f)]
+    [TestCase(1.6f, 0.5f, false, 0.6f)]
+    public void Validate_WarnsWhenClearanceIsBelowMinimum(
+        float pointDistance,
+        float minimumClearance,
+        bool expectedWarning,
+        float expectedDistance)
+    {
+        BallDataAsset ballData = CreateBallDataAsset(0.5f);
+        SetMinimumSpawnPointClearance(minimumClearance);
+
+        LevelDataValidationResult result = Validate(
+            Point("entry-a", Vector2.zero, Option(ballData, 100f)),
+            Point(
+                "entry-b",
+                new Vector2(pointDistance, 0f),
+                Option(ballData, 100f)));
+
+        Assert.That(result.Warnings, Has.Count.EqualTo(expectedWarning ? 1 : 0));
+        if (expectedWarning)
+        {
+            LevelDataSpacingWarning warning = result.Warnings[0];
+            Assert.That(warning.SpawnPointId, Is.EqualTo("entry-a"));
+            Assert.That(warning.RelatedSpawnPointId, Is.EqualTo("entry-b"));
+            Assert.That(warning.SpawnPointIndex, Is.EqualTo(0));
+            Assert.That(warning.RelatedSpawnPointIndex, Is.EqualTo(1));
+            Assert.That(
+                warning.Clearance,
+                Is.EqualTo(expectedDistance).Within(0.0001f));
+            Assert.That(result.IsValid, Is.True);
+        }
+    }
+
+    [Test]
+    public void Validate_MinimumClearanceUsesMaximumSelectableRadiusAndEffectiveOffset()
+    {
+        BallDataAsset largestBall =
+            CreateBallDataAsset(0.4f, new Vector2(0.2f, 0f), 1.5f);
+        BallDataAsset smallerBall = CreateBallDataAsset(0.25f);
+        BallDataAsset zeroProbabilityBall =
+            CreateBallDataAsset(3f, new Vector2(4f, 0f));
+        BallDataAsset otherBall =
+            CreateBallDataAsset(0.3f, new Vector2(-0.1f, 0f), 2f);
+        SetMinimumSpawnPointClearance(0.8f);
+
+        LevelDataValidationResult result = Validate(
+            Point(
+                "west",
+                Vector2.zero,
+                Option(smallerBall, 40f),
+                Option(largestBall, 60f),
+                Option(zeroProbabilityBall, 0f)),
+            Point(
+                "east",
+                new Vector2(2f, 0f),
+                Option(otherBall, 100f)));
+
+        Assert.That(result.IsValid, Is.True);
+        Assert.That(result.Warnings, Has.Count.EqualTo(1));
+        Assert.That(
+            result.Warnings[0].Clearance,
+            Is.EqualTo(0.3f).Within(0.0001f));
+    }
+
+    [Test]
+    public void Validate_OverlappingPointsRemainErrorsWithoutSpacingWarning()
+    {
+        BallDataAsset ballData = CreateBallDataAsset(0.5f);
+        SetMinimumSpawnPointClearance(0.75f);
+
+        LevelDataValidationResult result = Validate(
+            Point("entry-a", Vector2.zero, Option(ballData, 100f)),
+            Point("entry-b", new Vector2(0.9f, 0f), Option(ballData, 100f)));
+
+        AssertIssuePresent(
+            result,
+            LevelDataValidationErrorCode.OverlappingSpawnPoints);
+        Assert.That(result.Warnings, Is.Empty);
+        Assert.That(result.IsValid, Is.False);
+    }
+
+    [TestCase(-0.01f)]
+    [TestCase(float.NaN)]
+    [TestCase(float.PositiveInfinity)]
+    public void Validate_InvalidMinimumClearanceReturnsIssue(float clearance)
+    {
+        BallDataAsset ballData = CreateBallDataAsset(0.5f);
+        SetMinimumSpawnPointClearance(clearance);
+
+        LevelDataValidationResult result = Validate(
+            Point("entry", Vector2.zero, Option(ballData, 100f)));
+
+        AssertIssuePresent(
+            result,
+            LevelDataValidationErrorCode.InvalidMinimumSpawnPointClearance);
+        Assert.That(result.Warnings, Is.Empty);
+        Assert.That(result.IsValid, Is.False);
+    }
+
+    [Test]
+    public void Validate_MissingLevelRootDoesNotProduceSpacingWarnings()
+    {
+        BallDataAsset ballData = CreateBallDataAsset(0.5f);
+        SetMinimumSpawnPointClearance(0.5f);
+        SetSpawnPoints(
+            new[]
+            {
+                Point("entry-a", Vector2.zero, Option(ballData, 100f)),
+                Point("entry-b", new Vector2(1.4f, 0f), Option(ballData, 100f))
+            });
+
+        LevelDataValidationResult result =
+            LevelDataValidator.Validate(levelDataAsset, null);
+
+        AssertIssuePresent(result, LevelDataValidationErrorCode.MissingLevelRoot);
+        Assert.That(result.Warnings, Is.Empty);
+    }
+
+    [Test]
+    public void Validate_InvalidSelectableGeometryDoesNotProduceSpacingWarning()
+    {
+        BallDataAsset validBall = CreateBallDataAsset(0.5f);
+        BallDataAsset invalidBall = CreateBallDataAssetWithoutCollider();
+        SetMinimumSpawnPointClearance(1f);
+
+        LevelDataValidationResult result = Validate(
+            Point("entry-a", Vector2.zero, Option(validBall, 100f)),
+            Point(
+                "entry-b",
+                new Vector2(1.5f, 0f),
+                Option(validBall, 50f),
+                Option(invalidBall, 50f)));
+
+        AssertIssuePresent(
+            result,
+            LevelDataValidationErrorCode.MissingCircleCollider);
+        Assert.That(result.Warnings, Is.Empty);
+    }
+
     [Test]
     public void Validate_OverlappingPointsReturnsIssueForBothPoints()
     {
@@ -554,6 +694,14 @@ public class LevelDataValidatorTests
     {
         SetSpawnPoints(points);
         return LevelDataValidator.Validate(levelDataAsset, levelRoot.transform);
+    }
+
+    private void SetMinimumSpawnPointClearance(float clearance)
+    {
+        var serializedAsset = new SerializedObject(levelDataAsset);
+        serializedAsset.FindProperty("minimumSpawnPointClearance").floatValue =
+            clearance;
+        serializedAsset.ApplyModifiedPropertiesWithoutUndo();
     }
 
     private void SetSpawnPoints(SpawnPointSpec[] pointSpecs)

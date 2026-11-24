@@ -29,7 +29,7 @@ MonoBehaviour:
     - ballData: {fileID: 11400000, guid: 793adbb5394adeb4aacbf40c211fb697, type: 2}
       spawnProbability: 65
   - id: spawn-point-003
-    localPosition: {x: 2.0375423, y: -0.39841092}
+    localPosition: {x: -1.9869075, y: 3.3055077}
     spawnOptions:
     - ballData: {fileID: 11400000, guid: 793adbb5394adeb4aacbf40c211fb697, type: 2}
       spawnProbability: 50
@@ -57,8 +57,9 @@ MonoBehaviour:
     - ballData: {fileID: 11400000, guid: 06b101ce83ec5cd4cb20b49a612fb2f0, type: 2}
       spawnProbability: 55
   - id: spawn-point-007
-    localPosition: {x: 4.12755, y: 0.5762855}
+    localPosition: {x: 1.4208407, y: -0.4565379}
     spawnOptions:
     - ballData: {fileID: 11400000, guid: 06b101ce83ec5cd4cb20b49a612fb2f0, type: 2}
       spawnProbability: 100
   enableDynamicBalance: 1
+  minimumSpawnPointClearance: 0.5

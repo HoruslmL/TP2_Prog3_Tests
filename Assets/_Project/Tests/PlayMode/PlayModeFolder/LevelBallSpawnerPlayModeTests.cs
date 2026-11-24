@@ -82,6 +82,27 @@ public class LevelBallSpawnerPlayModeTests
     }
 
     [UnityTest]
+    public IEnumerator TrySpawnLevel_AllowsValidPointsWithinClearanceWarningMargin()
+    {
+        SetSpawnPoints(
+            (Vector2.zero, firstBallData),
+            (new Vector2(1.4f, 0f), secondBallData));
+
+        LevelDataValidationResult validation =
+            LevelDataValidator.Validate(levelData, levelRoot);
+        Assert.IsTrue(validation.IsValid);
+        Assert.AreEqual(1, validation.Warnings.Count);
+        Assert.AreEqual(0.4f, validation.Warnings[0].Clearance, 0.0001f);
+
+        bool success = levelBallSpawner.TrySpawnLevel(out string error);
+
+        Assert.IsTrue(success, error);
+        Assert.AreEqual(2, pool.CreatedCount);
+        Assert.AreEqual(2, GetActiveSpawnedBallCount());
+        yield return null;
+    }
+
+    [UnityTest]
     public IEnumerator TrySpawnLevel_WhenAlreadySpawned_RejectsWithoutChangingBalls()
     {
         SetSpawnPoints(

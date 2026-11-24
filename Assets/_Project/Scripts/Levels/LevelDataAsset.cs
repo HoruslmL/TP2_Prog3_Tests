@@ -11,8 +11,10 @@ public class LevelDataAsset : ScriptableObject
     [SerializeField] private List<BallSpawnPointData> spawnPoints =
         new List<BallSpawnPointData>();
     [SerializeField] private bool enableDynamicBalance;
+    [SerializeField, Min(0f)] private float minimumSpawnPointClearance = 0.5f;
 
     public int Seed => seed;
     public IReadOnlyList<BallSpawnPointData> SpawnPoints => spawnPoints;
     public bool EnableDynamicBalance => enableDynamicBalance;
+    public float MinimumSpawnPointClearance => minimumSpawnPointClearance;
 }

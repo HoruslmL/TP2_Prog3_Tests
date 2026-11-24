@@ -23,7 +23,8 @@ public enum LevelDataValidationErrorCode
     UnsupportedMultipleRootCircleColliders,
     InvalidBallScale,
     InvalidColliderRadius,
-    OverlappingSpawnPoints
+    OverlappingSpawnPoints,
+    InvalidMinimumSpawnPointClearance
 }
 
 public sealed class LevelDataValidationIssue
@@ -55,12 +56,40 @@ public sealed class LevelDataValidationIssue
 public sealed class LevelDataValidationResult
 {
     public IReadOnlyList<LevelDataValidationIssue> Issues { get; }
+    public IReadOnlyList<LevelDataSpacingWarning> Warnings { get; }
     public bool IsValid => Issues.Count == 0;
 
     internal LevelDataValidationResult(
-        List<LevelDataValidationIssue> issues)
+        List<LevelDataValidationIssue> issues,
+        List<LevelDataSpacingWarning> warnings = null)
     {
         Issues = issues.AsReadOnly();
+        Warnings = warnings == null
+            ? new List<LevelDataSpacingWarning>().AsReadOnly()
+            : warnings.AsReadOnly();
+    }
+}
+
+public sealed class LevelDataSpacingWarning
+{
+    public int SpawnPointIndex { get; }
+    public string SpawnPointId { get; }
+    public int RelatedSpawnPointIndex { get; }
+    public string RelatedSpawnPointId { get; }
+    public float Clearance { get; }
+
+    internal LevelDataSpacingWarning(
+        int spawnPointIndex,
+        string spawnPointId,
+        int relatedSpawnPointIndex,
+        string relatedSpawnPointId,
+        float clearance)
+    {
+        SpawnPointIndex = spawnPointIndex;
+        SpawnPointId = spawnPointId;
+        RelatedSpawnPointIndex = relatedSpawnPointIndex;
+        RelatedSpawnPointId = relatedSpawnPointId;
+        Clearance = clearance;
     }
 }
 
@@ -85,6 +114,22 @@ public static class LevelDataValidator
                 null,
                 "No se asignó un LevelDataAsset.");
             return new LevelDataValidationResult(issues);
+        }
+
+        bool hasValidClearance =
+            IsFinite(levelData.MinimumSpawnPointClearance) &&
+            levelData.MinimumSpawnPointClearance >= 0f;
+        if (!hasValidClearance)
+        {
+            AddIssue(
+                issues,
+                LevelDataValidationErrorCode.InvalidMinimumSpawnPointClearance,
+                null,
+                null,
+                null,
+                null,
+                "El margen de separación mínima debe ser un valor finito " +
+                "mayor o igual que cero.");
         }
 
         if (levelRoot == null)
@@ -144,6 +189,7 @@ public static class LevelDataValidator
             if (!IsFinite(worldPosition.x) || !IsFinite(worldPosition.y))
             {
                 state.ConfigurationsResolved = false;
+                state.MaximumGeometryResolved = false;
                 AddIssue(
                     issues,
                     LevelDataValidationErrorCode.InvalidSpawnPointWorldPosition,
@@ -159,7 +205,16 @@ public static class LevelDataValidator
         }
 
         ValidateOverlaps(pointStates, issues);
-        return new LevelDataValidationResult(issues);
+        var warnings = new List<LevelDataSpacingWarning>();
+        if (hasValidClearance)
+        {
+            ValidateMinimumClearance(
+                pointStates,
+                levelData.MinimumSpawnPointClearance,
+                warnings);
+        }
+
+        return new LevelDataValidationResult(issues, warnings);
     }
 
     private static void ValidateIdentifier(
@@ -221,6 +276,7 @@ public static class LevelDataValidator
                 BallSpawnOption option = options[i];
                 if (option == null)
                 {
+                    state.MaximumGeometryResolved = false;
                     AddIssue(
                         issues,
                         LevelDataValidationErrorCode.NullSpawnOption,
@@ -236,6 +292,7 @@ public static class LevelDataValidator
                 bool finiteProbability = IsFinite(probability);
                 if (!finiteProbability || probability < 0f || probability > 100f)
                 {
+                    state.MaximumGeometryResolved = false;
                     AddIssue(
                         issues,
                         LevelDataValidationErrorCode.ProbabilityOutOfRange,
@@ -312,6 +369,7 @@ public static class LevelDataValidator
         if (ballData == null)
         {
             state.ConfigurationsResolved = false;
+            state.MaximumGeometryResolved = false;
             return;
         }
 
@@ -322,6 +380,7 @@ public static class LevelDataValidator
             out BallColliderGeometryIssue geometryIssues);
         if (!hasValidGeometry)
         {
+            state.MaximumGeometryResolved = false;
             AddColliderGeometryIssues(
                 geometryIssues,
                 pointIndex,
@@ -335,6 +394,15 @@ public static class LevelDataValidator
             new ActiveColliderConfiguration(
                 effectiveCenterOffset,
                 effectiveRadius));
+        if (!state.HasMaximumConfiguration ||
+            effectiveRadius > state.MaximumConfiguration.Radius)
+        {
+            state.MaximumConfiguration =
+                new ActiveColliderConfiguration(
+                    effectiveCenterOffset,
+                    effectiveRadius);
+            state.HasMaximumConfiguration = true;
+        }
     }
 
     private static void AddColliderGeometryIssues(
@@ -481,6 +549,56 @@ public static class LevelDataValidator
         }
     }
 
+    private static void ValidateMinimumClearance(
+        SpawnPointValidationState[] pointStates,
+        float minimumClearance,
+        List<LevelDataSpacingWarning> warnings)
+    {
+        for (int i = 0; i < pointStates.Length; i++)
+        {
+            SpawnPointValidationState pointA = pointStates[i];
+            if (pointA == null ||
+                !pointA.MaximumGeometryResolved ||
+                !pointA.HasMaximumConfiguration)
+                continue;
+
+            for (int j = i + 1; j < pointStates.Length; j++)
+            {
+                SpawnPointValidationState pointB = pointStates[j];
+                if (pointB == null ||
+                    !pointB.MaximumGeometryResolved ||
+                    !pointB.HasMaximumConfiguration)
+                    continue;
+
+                ActiveColliderConfiguration geometryA =
+                    pointA.MaximumConfiguration;
+                ActiveColliderConfiguration geometryB =
+                    pointB.MaximumConfiguration;
+                Vector2 centerA =
+                    pointA.WorldPosition + geometryA.CenterOffset;
+                Vector2 centerB =
+                    pointB.WorldPosition + geometryB.CenterOffset;
+                float clearance =
+                    Vector2.Distance(centerA, centerB) -
+                    geometryA.Radius -
+                    geometryB.Radius;
+
+                if (!IsFinite(clearance) ||
+                    clearance < 0f ||
+                    clearance >= minimumClearance)
+                    continue;
+
+                warnings.Add(
+                    new LevelDataSpacingWarning(
+                        i,
+                        pointA.SpawnPoint.Id,
+                        j,
+                        pointB.SpawnPoint.Id,
+                        clearance));
+            }
+        }
+    }
+
     private static void AddPhysicalDataIssue(
         List<LevelDataValidationIssue> issues,
         LevelDataValidationErrorCode code,
@@ -527,6 +645,9 @@ public static class LevelDataValidator
         public Vector2 WorldPosition;
         public bool HasPositiveProbability;
         public bool ConfigurationsResolved = true;
+        public bool MaximumGeometryResolved = true;
+        public bool HasMaximumConfiguration;
+        public ActiveColliderConfiguration MaximumConfiguration;
         public readonly List<ActiveColliderConfiguration> ActiveConfigurations =
             new List<ActiveColliderConfiguration>();
 

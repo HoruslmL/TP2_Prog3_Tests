@@ -34,15 +34,28 @@ public class LevelDataAssetTests
         var serializedAsset = new SerializedObject(levelDataAsset);
         serializedAsset.FindProperty("seed").intValue = 7341;
         serializedAsset.FindProperty("enableDynamicBalance").boolValue = true;
+        serializedAsset.FindProperty("minimumSpawnPointClearance").floatValue =
+            1.25f;
         serializedAsset.ApplyModifiedPropertiesWithoutUndo();
 
         Assert.That(levelDataAsset.Seed, Is.EqualTo(7341));
         Assert.That(levelDataAsset.EnableDynamicBalance, Is.True);
+        Assert.That(
+            levelDataAsset.MinimumSpawnPointClearance,
+            Is.EqualTo(1.25f));
 
         serializedAsset.FindProperty("enableDynamicBalance").boolValue = false;
         serializedAsset.ApplyModifiedPropertiesWithoutUndo();
 
         Assert.That(levelDataAsset.EnableDynamicBalance, Is.False);
+    }
+
+    [Test]
+    public void MinimumSpawnPointClearance_DefaultsToHalfWorldUnit()
+    {
+        Assert.That(
+            levelDataAsset.MinimumSpawnPointClearance,
+            Is.EqualTo(0.5f));
     }
 
     [Test]

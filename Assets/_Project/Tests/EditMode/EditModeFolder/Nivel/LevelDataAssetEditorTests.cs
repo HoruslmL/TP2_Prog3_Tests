@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -171,6 +172,68 @@ public class LevelDataAssetEditorTests
     }
 
     [Test]
+    public void ClearanceWarnings_RefreshForMarginPositionsOptionsAndBallScale()
+    {
+        BallDataAsset baseBall =
+            CreateBallDataAssetWithCollider("base", 0.5f, 1f);
+        BallDataAsset largerBall =
+            CreateBallDataAssetWithCollider("larger", 0.3f, 2f);
+        SetLevel(
+            7,
+            false,
+            Point("west", Vector2.zero, Option(baseBall, 100f)),
+            Point(
+                "east",
+                new Vector2(1.4f, 0f),
+                Option(baseBall, 100f)));
+
+        var rootObject = new GameObject("ValidationRoot");
+        objectsToDestroy.Add(rootObject);
+        editor = CreateLevelEditor();
+        SetValidationRoot(rootObject.transform);
+        editor.CheckForChanges();
+
+        Assert.That(editor.CurrentValidationResult.IsValid, Is.True);
+        Assert.That(editor.CurrentValidationResult.Warnings, Has.Count.EqualTo(1));
+        Assert.That(
+            editor.CurrentValidationResult.Warnings[0].Clearance,
+            Is.EqualTo(0.4f).Within(0.0001f));
+
+        LevelDataValidationResult beforeMarginChange =
+            editor.CurrentValidationResult;
+        SetMinimumSpawnPointClearance(0.3f);
+        editor.CheckForChanges();
+        Assert.That(
+            editor.CurrentValidationResult,
+            Is.Not.SameAs(beforeMarginChange));
+        Assert.That(editor.CurrentValidationResult.Warnings, Is.Empty);
+
+        SetPointPosition(1, new Vector2(1.2f, 0f));
+        editor.CheckForChanges();
+        Assert.That(editor.CurrentValidationResult.Warnings, Has.Count.EqualTo(1));
+        Assert.That(
+            editor.CurrentValidationResult.Warnings[0].Clearance,
+            Is.EqualTo(0.2f).Within(0.0001f));
+
+        SetPointOption(1, largerBall, 100f);
+        editor.CheckForChanges();
+        Assert.That(editor.CurrentValidationResult.Warnings, Has.Count.EqualTo(1));
+        Assert.That(
+            editor.CurrentValidationResult.Warnings[0].Clearance,
+            Is.EqualTo(0.1f).Within(0.0001f));
+
+        var serializedLargerBall = new SerializedObject(largerBall);
+        serializedLargerBall.FindProperty("scale").floatValue = 2.5f;
+        Assert.That(serializedLargerBall.ApplyModifiedProperties(), Is.True);
+        editor.CheckForChanges();
+        Assert.That(editor.CurrentValidationResult.Warnings, Is.Empty);
+        Assert.That(editor.CurrentValidationResult.Issues, Has.Count.EqualTo(1));
+        Assert.That(
+            editor.CurrentValidationResult.Issues[0].Code,
+            Is.EqualTo(LevelDataValidationErrorCode.OverlappingSpawnPoints));
+    }
+
+    [Test]
     public void AddSpawnPoint_UndoAndRedoRefreshDistribution()
     {
         BallDataAsset ballData = CreateBallDataAsset("ball");
@@ -287,6 +350,23 @@ public class LevelDataAssetEditorTests
         return asset;
     }
 
+    private BallDataAsset CreateBallDataAssetWithCollider(
+        string id,
+        float colliderRadius,
+        float scale)
+    {
+        var prefab = new GameObject(id + "Prefab");
+        prefab.AddComponent<CircleCollider2D>().radius = colliderRadius;
+        objectsToDestroy.Add(prefab);
+
+        BallDataAsset asset = CreateBallDataAsset(id);
+        var serializedAsset = new SerializedObject(asset);
+        serializedAsset.FindProperty("ballPrefab").objectReferenceValue = prefab;
+        serializedAsset.FindProperty("scale").floatValue = scale;
+        Assert.That(serializedAsset.ApplyModifiedPropertiesWithoutUndo(), Is.True);
+        return asset;
+    }
+
     private void SetLevel(
         int seed,
         bool enableDynamicBalance,
@@ -340,6 +420,48 @@ public class LevelDataAssetEditorTests
         serializedAsset.FindProperty("enableDynamicBalance").boolValue =
             enabled;
         Assert.That(serializedAsset.ApplyModifiedProperties(), Is.True);
+    }
+
+    private void SetMinimumSpawnPointClearance(float clearance)
+    {
+        var serializedAsset = new SerializedObject(levelDataAsset);
+        serializedAsset.FindProperty("minimumSpawnPointClearance").floatValue =
+            clearance;
+        Assert.That(serializedAsset.ApplyModifiedProperties(), Is.True);
+    }
+
+    private void SetPointPosition(int pointIndex, Vector2 position)
+    {
+        var serializedAsset = new SerializedObject(levelDataAsset);
+        serializedAsset.FindProperty("spawnPoints")
+            .GetArrayElementAtIndex(pointIndex)
+            .FindPropertyRelative("localPosition")
+            .vector2Value = position;
+        Assert.That(serializedAsset.ApplyModifiedProperties(), Is.True);
+    }
+
+    private void SetPointOption(
+        int pointIndex,
+        BallDataAsset ballData,
+        float probability)
+    {
+        var serializedAsset = new SerializedObject(levelDataAsset);
+        SerializedProperty option = serializedAsset
+            .FindProperty("spawnPoints")
+            .GetArrayElementAtIndex(pointIndex)
+            .FindPropertyRelative("spawnOptions")
+            .GetArrayElementAtIndex(0);
+        SetOption(option, Option(ballData, probability));
+        Assert.That(serializedAsset.ApplyModifiedProperties(), Is.True);
+    }
+
+    private void SetValidationRoot(Transform root)
+    {
+        FieldInfo field = typeof(LevelDataAssetEditor).GetField(
+            "validationRoot",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(field, Is.Not.Null);
+        field.SetValue(editor, root);
     }
 
     private void SetOptions(params OptionSpec[] optionSpecs)

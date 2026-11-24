@@ -69,6 +69,9 @@ public sealed class LevelDataAssetEditor : Editor
         EditorGUILayout.PropertyField(
             serializedObject.FindProperty("enableDynamicBalance"),
             new GUIContent("Balance dinámico"));
+        EditorGUILayout.PropertyField(
+            serializedObject.FindProperty("minimumSpawnPointClearance"),
+            new GUIContent("Margen mínimo entre puntos"));
 
         SerializedProperty spawnPoints =
             serializedObject.FindProperty("spawnPoints");
@@ -217,21 +220,33 @@ public sealed class LevelDataAssetEditor : Editor
             EditorGUILayout.HelpBox(
                 "La configuración del nivel es válida.",
                 MessageType.Info);
-            return;
+        }
+        else
+        {
+            foreach (LevelDataValidationIssue issue in validationResult.Issues)
+            {
+                string location = issue.SpawnPointIndex.HasValue
+                    ? "Punto " + (issue.SpawnPointIndex.Value + 1) +
+                      (string.IsNullOrEmpty(issue.SpawnPointId)
+                          ? string.Empty
+                          : " (" + issue.SpawnPointId + ")") +
+                      ": "
+                    : string.Empty;
+                EditorGUILayout.HelpBox(
+                    issue.Code + " — " + location + issue.Message,
+                    MessageType.Error);
+            }
         }
 
-        foreach (LevelDataValidationIssue issue in validationResult.Issues)
+        foreach (LevelDataSpacingWarning warning in validationResult.Warnings)
         {
-            string location = issue.SpawnPointIndex.HasValue
-                ? "Punto " + (issue.SpawnPointIndex.Value + 1) +
-                  (string.IsNullOrEmpty(issue.SpawnPointId)
-                      ? string.Empty
-                      : " (" + issue.SpawnPointId + ")") +
-                  ": "
-                : string.Empty;
             EditorGUILayout.HelpBox(
-                issue.Code + " — " + location + issue.Message,
-                MessageType.Error);
+                "Separación reducida entre '" + warning.SpawnPointId +
+                "' y '" + warning.RelatedSpawnPointId +
+                "': " + warning.Clearance.ToString("F2", CultureInfo.CurrentCulture) +
+                " unidades libres. Esto es una advertencia; no garantiza " +
+                "ausencia de colisiones durante el movimiento.",
+                MessageType.Warning);
         }
     }
 
@@ -357,6 +372,7 @@ public sealed class LevelDataAssetEditor : Editor
     private string BuildValidationSignature(LevelDataAsset levelData)
     {
         var signature = new StringBuilder(128);
+        AppendFloat(signature, levelData.MinimumSpawnPointClearance);
         IReadOnlyList<BallSpawnPointData> spawnPoints = levelData.SpawnPoints;
         if (spawnPoints == null)
         {
