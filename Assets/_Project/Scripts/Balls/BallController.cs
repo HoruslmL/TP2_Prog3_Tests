@@ -11,6 +11,7 @@ public class BallController : MonoBehaviour
         rb.linearVelocity.sqrMagnitude > MovementThreshold * MovementThreshold;
 
     private Rigidbody2D rb;
+    private SpriteRenderer spriteRenderer;
     private InteractionResolver resolver;
     private BallEffectActivation effectActivation;
     private BallPool ownerPool;
@@ -77,6 +78,11 @@ public class BallController : MonoBehaviour
 
         rb.mass = data.Mass;
         transform.localScale = Vector3.one * data.Scale;
+
+        if (spriteRenderer == null)
+            spriteRenderer = GetComponent<SpriteRenderer>();
+        if (spriteRenderer != null)
+            spriteRenderer.color = data.Color;
 
         if (effectActivation == null)
             effectActivation = GetComponent<BallEffectActivation>();

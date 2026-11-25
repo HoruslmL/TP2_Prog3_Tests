@@ -1,3 +1,5 @@
+using UnityEngine;
+
 public sealed class BallData
 {
     public string Id { get; }
@@ -7,6 +9,7 @@ public sealed class BallData
     public float EffectRadius { get; }
     public float EffectDelay { get; }
     public float Scale { get; }
+    public Color Color { get; }
 
     public BallData(
         string id,
@@ -16,6 +19,27 @@ public sealed class BallData
         float effectDelay = 1f,
         float scale = 1f,
         string displayName = null)
+        : this(
+            id,
+            mass,
+            abilityType,
+            effectRadius,
+            effectDelay,
+            scale,
+            displayName,
+            UnityEngine.Color.white)
+    {
+    }
+
+    public BallData(
+        string id,
+        float mass,
+        BallAbilityType abilityType,
+        float effectRadius,
+        float effectDelay,
+        float scale,
+        string displayName,
+        Color color)
     {
         Id = id;
         DisplayName = string.IsNullOrWhiteSpace(displayName)
@@ -26,5 +50,6 @@ public sealed class BallData
         EffectRadius = effectRadius;
         EffectDelay = effectDelay;
         Scale = scale;
+        Color = color;
     }
 }

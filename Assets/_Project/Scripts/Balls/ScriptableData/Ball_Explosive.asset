@@ -19,4 +19,5 @@ MonoBehaviour:
   effectRadius: 3
   effectDelay: 1
   scale: 1.25
+  color: {r: 0.7075472, g: 0.11681202, b: 0.11681202, a: 1}
   ballPrefab: {fileID: 2104226824329706994, guid: 849a3868177da2a4aa79b12d6044b45b, type: 3}

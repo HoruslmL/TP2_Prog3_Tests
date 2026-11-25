@@ -18,4 +18,5 @@ MonoBehaviour:
   abilityType: 0
   explosionRadius: 0
   explosionDelay: 1
+  color: {r: 1, g: 1, b: 1, a: 1}
   ballPrefab: {fileID: 6175349135241695680, guid: 2113a5831d258b845a47b6b62013d31e, type: 3}

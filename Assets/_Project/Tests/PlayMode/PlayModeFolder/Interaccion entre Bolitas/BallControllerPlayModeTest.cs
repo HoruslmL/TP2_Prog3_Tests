@@ -22,6 +22,8 @@ public class BallControllerPlayModeTest
         BallController controller =
             ballObject.AddComponent<BallController>();
 
+        Assert.IsNull(ballObject.GetComponent<SpriteRenderer>());
+
         controller.Initialize(data);
 
         yield return null;

@@ -22,10 +22,14 @@ public class BallDataAsset : ScriptableObject
     [SerializeField, Min(0.1f)]
     private float scale = 1f;
 
+    [SerializeField] private Color color = UnityEngine.Color.white;
+
     [SerializeField] private GameObject ballPrefab;
 
     public string DisplayName =>
         string.IsNullOrWhiteSpace(displayName) ? id : displayName;
+
+    public Color Color => color;
 
     public GameObject BallPrefab => ballPrefab;
 
@@ -38,7 +42,8 @@ public class BallDataAsset : ScriptableObject
             effectRadius,
             effectDelay,
             scale,
-            DisplayName
+            DisplayName,
+            color
         );
     }
 }

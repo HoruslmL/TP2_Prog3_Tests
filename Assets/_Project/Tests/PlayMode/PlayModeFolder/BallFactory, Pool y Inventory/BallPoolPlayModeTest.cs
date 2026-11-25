@@ -27,6 +27,7 @@ public class BallPoolPlayModeTest
 
         prefabObject.AddComponent<Rigidbody2D>();
         prefabObject.AddComponent<CircleCollider2D>();
+        prefabObject.AddComponent<SpriteRenderer>().color = Color.magenta;
 
         prefab = prefabObject.AddComponent<BallController>();
 
@@ -37,7 +38,8 @@ public class BallPoolPlayModeTest
             0f,
             1f,
             1.5f,
-            "Normal"
+            "Normal",
+            Color.white
         );
 
         explosiveData = new BallData(
@@ -47,7 +49,8 @@ public class BallPoolPlayModeTest
             0.1f,
             0.1f,
             1.5f,
-            "Explosive"
+            "Explosive",
+            new Color(0.7075472f, 0.11681202f, 0.11681202f, 1f)
         );
 
         poolObject = new GameObject("BallPool");
@@ -67,6 +70,7 @@ public class BallPoolPlayModeTest
         Assert.IsNotNull(ball);
         Assert.IsTrue(ball.gameObject.activeSelf);
         Assert.AreEqual("Normal", ball.gameObject.name);
+        Assert.AreEqual(Color.white, ball.GetComponent<SpriteRenderer>().color);
         Assert.AreEqual(Quaternion.identity, ball.transform.rotation);
 
         Assert.AreEqual(
@@ -80,6 +84,22 @@ public class BallPoolPlayModeTest
         );
 
         Assert.AreEqual(1, pool.CreatedCount);
+
+        yield return null;
+    }
+
+    [UnityTest]
+    public IEnumerator GetBall_CreatesExplosiveBallWithConfiguredColor()
+    {
+        BallController ball = pool.GetBall(
+            explosiveData,
+            Vector2.zero
+        );
+
+        Assert.IsNotNull(ball);
+        Assert.AreEqual(
+            explosiveData.Color,
+            ball.GetComponent<SpriteRenderer>().color);
 
         yield return null;
     }
@@ -213,6 +233,9 @@ public class BallPoolPlayModeTest
         Assert.AreSame(explosiveBall, reusedBall);
         Assert.IsTrue(reusedBall.gameObject.activeSelf);
         Assert.AreEqual("Normal", reusedBall.gameObject.name);
+        Assert.AreEqual(
+            normalData.Color,
+            reusedBall.GetComponent<SpriteRenderer>().color);
 
         Assert.IsNull(
             reusedBall.GetComponent<ExplosiveEffectExecutor>()
@@ -239,6 +262,9 @@ public class BallPoolPlayModeTest
             Vector2.zero);
         Assert.IsNotNull(normalBall);
         Assert.AreEqual("Normal", normalBall.gameObject.name);
+        Assert.AreEqual(
+            normalData.Color,
+            normalBall.GetComponent<SpriteRenderer>().color);
 
         normalBall.Despawn();
         while (pool.AvailableCount == 0)
@@ -250,6 +276,9 @@ public class BallPoolPlayModeTest
 
         Assert.AreSame(normalBall, reusedBall);
         Assert.AreEqual("Explosive", reusedBall.gameObject.name);
+        Assert.AreEqual(
+            explosiveData.Color,
+            reusedBall.GetComponent<SpriteRenderer>().color);
         Assert.AreEqual(
             BallAbilityType.Explosive,
             reusedBall.Runtime.Data.AbilityType);

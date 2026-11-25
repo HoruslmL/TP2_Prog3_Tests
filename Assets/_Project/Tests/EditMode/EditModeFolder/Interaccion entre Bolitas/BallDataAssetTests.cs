@@ -17,6 +17,8 @@ public class BallDataAssetTests
             (int)BallAbilityType.Explosive;
         serializedAsset.FindProperty("effectRadius").floatValue = 3f;
         serializedAsset.FindProperty("effectDelay").floatValue = 1f;
+        Color expectedColor = new Color(0.2f, 0.4f, 0.6f, 1f);
+        serializedAsset.FindProperty("color").colorValue = expectedColor;
         serializedAsset.ApplyModifiedPropertiesWithoutUndo();
 
         BallData data = asset.ToBallData();
@@ -27,6 +29,7 @@ public class BallDataAssetTests
         Assert.That(data.AbilityType, Is.EqualTo(BallAbilityType.Explosive));
         Assert.That(data.EffectRadius, Is.EqualTo(3f));
         Assert.That(data.EffectDelay, Is.EqualTo(1f));
+        Assert.That(data.Color, Is.EqualTo(expectedColor));
 
         Object.DestroyImmediate(asset);
     }
@@ -44,6 +47,7 @@ public class BallDataAssetTests
         BallData data = asset.ToBallData();
 
         Assert.That(data.DisplayName, Is.EqualTo("Normal"));
+        Assert.That(data.Color, Is.EqualTo(Color.white));
 
         Object.DestroyImmediate(asset);
     }
